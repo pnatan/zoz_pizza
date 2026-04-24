@@ -1,0 +1,21 @@
+.footer {
+  padding: 24px 16px 36px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-card);
+}
+
+.footer-address {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.footer-copy {
+  font-size: 11px;
+  color: var(--text-light);
+  direction: ltr;
+}

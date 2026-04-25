@@ -10,11 +10,11 @@ export default function App() {
       <div className="panel-info">
         <Hero />
         <Gallery />
-        <Footer />
       </div>
       <div className="panel-order">
         <OrderSection />
       </div>
+      <Footer />
     </div>
   )
 }

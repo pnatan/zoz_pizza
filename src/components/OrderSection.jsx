@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PizzaCard from './PizzaCard'
 import './OrderSection.css'
 
@@ -22,13 +22,15 @@ function formatPizzas(pizzas) {
   }).join('\n\n')
 }
 
-const PICKUP_TIMES = [
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00',
-]
+const PICKUP_TIMES = Array.from({ length: 19 }, (_, i) => {
+  const totalMinutes = 18 * 60 + i * 10
+  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
+  const m = String(totalMinutes % 60).padStart(2, '0')
+  return `${h}:${m}`
+}).filter(t => t <= '21:00')
 
 const PIZZA_PRICE = 60
+const MAX_PIZZAS = 3
 
 function createEmptyPizza(id) {
   return {
@@ -48,6 +50,22 @@ export default function OrderSection() {
   const [submitted, setSubmitted] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
+  const [phoneError, setPhoneError] = useState(null)
+  const [slotCounts, setSlotCounts] = useState({})
+
+  function validatePhone(value) {
+    const digits = value.replace(/[-\s]/g, '')
+    return /^05[0-9]{8}$/.test(digits)
+  }
+
+  function loadAvailability() {
+    fetch('/api/get-availability')
+      .then(r => r.json())
+      .then(data => setSlotCounts(data.slotCounts || {}))
+      .catch(() => {})
+  }
+
+  useEffect(() => { loadAvailability() }, [])
 
   const total = pizzas.length * PIZZA_PRICE
 
@@ -66,6 +84,15 @@ export default function OrderSection() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!validatePhone(customerPhone)) {
+      setPhoneError('מספר טלפון לא תקין, יש להזין מספר נייד ישראלי')
+      return
+    }
+    const missingType = pizzas.some(p => !Object.values(p.sauces).some(Boolean))
+    if (missingType) {
+      setError('יש לבחור סוג פיצה לכל הזמנה')
+      return
+    }
     setSending(true)
     setError(null)
     try {
@@ -78,12 +105,17 @@ export default function OrderSection() {
           pickup_time: pickupTime,
           order_details: formatPizzas(pizzas),
           total_price: `₪${total}`,
+          pizza_count: pizzas.length,
         }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '')
+      }
       setSubmitted(true)
-    } catch {
-      setError('שגיאה בשליחת ההזמנה, נסה שוב')
+      loadAvailability()
+    } catch (err) {
+      setError(err.message || 'שגיאה בשליחת ההזמנה, נסה שוב')
     } finally {
       setSending(false)
     }
@@ -131,6 +163,7 @@ export default function OrderSection() {
               pizza={pizza}
               index={index}
               canRemove={pizzas.length > 1}
+              typeError={!Object.values(pizza.sauces).some(Boolean) && !!error}
               onChange={updated => updatePizza(pizza.id, updated)}
               onRemove={() => removePizza(pizza.id)}
             />
@@ -156,9 +189,21 @@ export default function OrderSection() {
             required
           >
             <option value="" disabled>בחר שעה</option>
-            {PICKUP_TIMES.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
+            {PICKUP_TIMES.map(t => {
+              const ordered = slotCounts[t] || 0
+              const remaining = MAX_PIZZAS - ordered
+              const isFull = remaining <= 0
+              const label = isFull
+                ? `${t} — מלא`
+                : remaining === 1
+                  ? `${t} — נותרה 1`
+                  : `${t} — נותרו ${remaining}`
+              return (
+                <option key={t} value={t} disabled={isFull}>
+                  {label}
+                </option>
+              )
+            })}
           </select>
         </div>
 
@@ -173,13 +218,21 @@ export default function OrderSection() {
             required
           />
           <input
-            className="text-input"
+            className={`text-input${phoneError ? ' input-error' : ''}`}
             type="tel"
             placeholder="טלפון נייד"
             value={customerPhone}
-            onChange={e => setCustomerPhone(e.target.value)}
+            onChange={e => {
+              setCustomerPhone(e.target.value)
+              if (phoneError) setPhoneError(null)
+            }}
+            onBlur={() => {
+              if (customerPhone && !validatePhone(customerPhone))
+                setPhoneError('מספר טלפון לא תקין, יש להזין מספר נייד ישראלי')
+            }}
             required
           />
+          {phoneError && <p className="field-error">{phoneError}</p>}
         </div>
 
         <div className="order-total-row">

@@ -2,7 +2,44 @@
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  background-color: var(--bg-dark);
-  position: relative;
-  overflow: hidden;
+  background-color: var(--bg);
+}
+
+.panel-info,
+.panel-order {
+  /* transparent on mobile — layout is just stacked */
+}
+
+/* ── Desktop layout ── */
+@media (min-width: 768px) {
+  .app {
+    max-width: 1080px;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    grid-template-rows: 1fr;
+    align-items: start;
+    min-height: 100vh;
+  }
+
+  .panel-info {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-order {
+    min-height: 100vh;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  /* Push footer to bottom of info panel */
+  .panel-info footer {
+    margin-top: auto;
+  }
 }

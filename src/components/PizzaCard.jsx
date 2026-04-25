@@ -16,7 +16,7 @@ const TYPES = [
   { key: 'white', label: 'לבנה' },
 ]
 
-export default function PizzaCard({ pizza, index, canRemove, onChange, onRemove }) {
+export default function PizzaCard({ pizza, index, canRemove, typeError, onChange, onRemove }) {
   function handleToppingChange(key) {
     onChange({ toppings: { ...pizza.toppings, [key]: !pizza.toppings[key] } })
   }
@@ -44,7 +44,7 @@ export default function PizzaCard({ pizza, index, canRemove, onChange, onRemove 
       </div>
 
       <div className="pizza-group">
-        <span className="group-label">סוג</span>
+        <span className="group-label" style={typeError ? { color: 'var(--accent)' } : {}}>סוג{typeError ? ' — יש לבחור סוג' : ''}</span>
         <div className="checkboxes-grid">
           {TYPES.map(({ key, label }) => (
             <label key={key} className="checkbox-label">

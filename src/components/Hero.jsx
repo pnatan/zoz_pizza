@@ -9,7 +9,7 @@ export default function Hero() {
           <div className="logo-circle">
             <div className="logo-inner">
               <span className="logo-top-text">PIZZA MEHALEV</span>
-              <div className="logo-burger-icon">🍕</div>
+              <div className="logo-pizza-icon">🍕</div>
             </div>
           </div>
         </div>

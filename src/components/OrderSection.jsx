@@ -35,7 +35,7 @@ function createEmptyPizza(id) {
     id,
     name: '',
     toppings: { mushrooms: false, olives: false, peppers: false, onion: false, corn: false, chicken: false, pepperoni: false, extra_cheese: false },
-    sauces: { margarita: true, white: false },
+    sauces: { margarita: false, white: false },
   }
 }
 
@@ -124,11 +124,11 @@ export default function OrderSection() {
       <h2 className="section-title">בנו את הפיצה שלכם</h2>
 
       <form onSubmit={handleSubmit} className="order-form">
-        <div className="burgers-list">
+        <div className="pizzas-list">
           {pizzas.map((pizza, index) => (
             <PizzaCard
               key={pizza.id}
-              burger={pizza}
+              pizza={pizza}
               index={index}
               canRemove={pizzas.length > 1}
               onChange={updated => updatePizza(pizza.id, updated)}
@@ -137,7 +137,7 @@ export default function OrderSection() {
           ))}
         </div>
 
-        <button type="button" className="btn-add-burger" onClick={addPizza}>
+        <button type="button" className="btn-add-pizza" onClick={addPizza}>
           <span>+</span> הוסף פיצה
         </button>
 

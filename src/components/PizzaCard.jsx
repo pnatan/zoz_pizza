@@ -16,9 +16,9 @@ const TYPES = [
   { key: 'white', label: 'לבנה' },
 ]
 
-export default function PizzaCard({ burger, index, canRemove, onChange, onRemove }) {
+export default function PizzaCard({ pizza, index, canRemove, onChange, onRemove }) {
   function handleToppingChange(key) {
-    onChange({ toppings: { ...burger.toppings, [key]: !burger.toppings[key] } })
+    onChange({ toppings: { ...pizza.toppings, [key]: !pizza.toppings[key] } })
   }
 
   function handleTypeChange(key) {
@@ -50,12 +50,12 @@ export default function PizzaCard({ burger, index, canRemove, onChange, onRemove
             <label key={key} className="checkbox-label">
               <input
                 type="radio"
-                name={`type-${burger.id || index}`}
-                checked={burger.sauces[key]}
+                name={`type-${pizza.id || index}`}
+                checked={pizza.sauces[key]}
                 onChange={() => handleTypeChange(key)}
               />
               <span className="custom-checkbox">
-                {burger.sauces[key] && (
+                {pizza.sauces[key] && (
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6l3 3 5-5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
@@ -74,11 +74,11 @@ export default function PizzaCard({ burger, index, canRemove, onChange, onRemove
             <label key={key} className="checkbox-label">
               <input
                 type="checkbox"
-                checked={burger.toppings[key]}
+                checked={pizza.toppings[key]}
                 onChange={() => handleToppingChange(key)}
               />
               <span className="custom-checkbox">
-                {burger.toppings[key] && (
+                {pizza.toppings[key] && (
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6l3 3 5-5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>

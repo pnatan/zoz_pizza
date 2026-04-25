@@ -39,13 +39,13 @@
   gap: 12px;
 }
 
-.burgers-list {
+.pizzas-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.btn-add-burger {
+.btn-add-pizza {
   width: 100%;
   padding: 15px;
   background: #ffffff;
@@ -63,12 +63,12 @@
   direction: rtl;
 }
 
-.btn-add-burger span {
+.btn-add-pizza span {
   font-size: 20px;
   line-height: 1;
 }
 
-.btn-add-burger:hover {
+.btn-add-pizza:hover {
   border-color: var(--accent);
   background: #fff5f2;
 }

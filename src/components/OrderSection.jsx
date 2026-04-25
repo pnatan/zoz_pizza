@@ -7,18 +7,30 @@ const TOPPING_LABELS = {
   onion: 'בצל', corn: 'תירס', chicken: 'עוף',
   pepperoni: 'פפרוני', extra_cheese: 'גבינה כפולה',
 }
-const SAUCE_LABELS = { margarita: 'מרגריטה', white: 'לבנה' }
+const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
+
+const SECTION_NAMES = {
+  half: ['ימין', 'שמאל'],
+  third: ['ימין', 'תחתון', 'שמאל'],
+  quarter: ['ימין עליון', 'ימין תחתון', 'שמאל תחתון', 'שמאל עליון'],
+}
 
 function formatPizzas(pizzas) {
   return pizzas.map((p, i) => {
     const toppings = Object.entries(p.toppings)
       .filter(([, v]) => v)
-      .map(([k]) => TOPPING_LABELS[k])
+      .map(([k, v]) => {
+        if (v === 'full') return TOPPING_LABELS[k]
+        const names = v.sections.map(s => SECTION_NAMES[v.portion][s - 1])
+        return `${TOPPING_LABELS[k]} (${names.join(' + ')})`
+      })
       .join(', ') || 'ללא תוספות'
     const sauce = Object.entries(p.sauces).find(([, v]) => v)
     const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : 'ללא רוטב'
+    const price = getPizzaPrice(p)
+    const removals = p.removals && p.removals.length > 0 ? `\n  ללא: ${p.removals.join(', ')}` : ''
     const name = p.name ? ` (עבור: ${p.name})` : ''
-    return `פיצה ${i + 1}${name}\n  סוג: ${sauceLabel}\n  תוספות: ${toppings}`
+    return `פיצה ${i + 1}${name}\n  סוג: ${sauceLabel}\n  תוספות: ${toppings}${removals}\n  מחיר: ₪${price}`
   }).join('\n\n')
 }
 
@@ -29,15 +41,24 @@ const PICKUP_TIMES = Array.from({ length: 19 }, (_, i) => {
   return `${h}:${m}`
 }).filter(t => t <= '21:00')
 
-const PIZZA_PRICE = 60
+const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
+const TOPPING_PRICE = 4
+
+function getPizzaPrice(pizza) {
+  const type = Object.entries(pizza.sauces).find(([, v]) => v)
+  const basePrice = type ? PIZZA_PRICES[type[0]] : 0
+  const toppingCount = Object.values(pizza.toppings).filter(Boolean).length
+  return basePrice + toppingCount * TOPPING_PRICE
+}
 const MAX_PIZZAS = 3
 
 function createEmptyPizza(id) {
   return {
     id,
     name: '',
-    toppings: { mushrooms: false, olives: false, peppers: false, onion: false, corn: false, chicken: false, pepperoni: false, extra_cheese: false },
-    sauces: { margarita: false, white: false },
+    toppings: { mushrooms: null, olives: null, peppers: null, onion: null, corn: null, chicken: null, pepperoni: null, extra_cheese: null },
+    sauces: { margarita: false, meat: false, pesto: false, white: false },
+    removals: [],
   }
 }
 
@@ -47,11 +68,12 @@ export default function OrderSection() {
   const [pickupTime, setPickupTime] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
   const [phoneError, setPhoneError] = useState(null)
-  const [slotCounts, setSlotCounts] = useState({})
+  const [slotRemaining, setSlotRemaining] = useState({})
 
   function validatePhone(value) {
     const digits = value.replace(/[-\s]/g, '')
@@ -61,13 +83,19 @@ export default function OrderSection() {
   function loadAvailability() {
     fetch('/api/get-availability')
       .then(r => r.json())
-      .then(data => setSlotCounts(data.slotCounts || {}))
+      .then(data => setSlotRemaining(data.slotRemaining || {}))
       .catch(() => {})
   }
 
   useEffect(() => { loadAvailability() }, [])
 
-  const total = pizzas.length * PIZZA_PRICE
+  useEffect(() => {
+    if (pickupTime && (slotRemaining[pickupTime] ?? MAX_PIZZAS) < pizzas.length) {
+      setPickupTime('')
+    }
+  }, [pizzas.length])
+
+  const total = pizzas.reduce((sum, p) => sum + getPizzaPrice(p), 0)
 
   function addPizza() {
     setPizzas(prev => [...prev, createEmptyPizza(nextId)])
@@ -93,6 +121,10 @@ export default function OrderSection() {
       setError('יש לבחור סוג פיצה לכל הזמנה')
       return
     }
+    if (!paymentMethod) {
+      setError('יש לבחור אמצעי תשלום')
+      return
+    }
     setSending(true)
     setError(null)
     try {
@@ -106,6 +138,8 @@ export default function OrderSection() {
           order_details: formatPizzas(pizzas),
           total_price: `₪${total}`,
           pizza_count: pizzas.length,
+          payment_method: paymentMethod,
+          pizzas,
         }),
       })
       if (!res.ok) {
@@ -137,6 +171,7 @@ export default function OrderSection() {
               setPickupTime('')
               setCustomerName('')
               setCustomerPhone('')
+              setPaymentMethod('')
             }}
           >
             הזמנה חדשה
@@ -186,18 +221,19 @@ export default function OrderSection() {
             className="select-input"
             value={pickupTime}
             onChange={e => setPickupTime(e.target.value)}
+            onFocus={loadAvailability}
             required
           >
             <option value="" disabled>בחר שעה</option>
             {PICKUP_TIMES.map(t => {
-              const ordered = slotCounts[t] || 0
-              const remaining = MAX_PIZZAS - ordered
-              const isFull = remaining <= 0
+              const remaining = slotRemaining[t] ?? MAX_PIZZAS
+              const displayed = Math.min(remaining, MAX_PIZZAS)
+              const isFull = remaining < pizzas.length
               const label = isFull
                 ? `${t} — מלא`
-                : remaining === 1
+                : displayed === 1
                   ? `${t} — נותרה 1`
-                  : `${t} — נותרו ${remaining}`
+                  : `${t} — נותרו ${displayed}`
               return (
                 <option key={t} value={t} disabled={isFull}>
                   {label}
@@ -233,6 +269,20 @@ export default function OrderSection() {
             required
           />
           {phoneError && <p className="field-error">{phoneError}</p>}
+        </div>
+
+        <div className="order-card">
+          <label className="card-label">אמצעי תשלום</label>
+          <select
+            className="select-input"
+            value={paymentMethod}
+            onChange={e => setPaymentMethod(e.target.value)}
+          >
+            <option value="" disabled>בחר אמצעי תשלום</option>
+            <option value="מזומן">מזומן</option>
+            <option value="Bit">Bit — 050-5934465</option>
+            <option value="Paybox">Paybox — 050-5934465</option>
+          </select>
         </div>
 
         <div className="order-total-row">

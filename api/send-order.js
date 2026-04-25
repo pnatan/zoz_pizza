@@ -3,6 +3,96 @@ import { Redis } from '@upstash/redis'
 
 const MAX_PIZZAS_PER_HOUR = 3
 
+const SLOTS = Array.from({ length: 19 }, (_, i) => {
+  const totalMinutes = 18 * 60 + i * 10
+  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
+  const m = String(totalMinutes % 60).padStart(2, '0')
+  return `${h}:${m}`
+}).filter(t => t <= '21:00')
+
+function computeRemaining(counts) {
+  const remaining = {}
+  let rollover = 0
+  for (const slot of SLOTS) {
+    const cap = MAX_PIZZAS_PER_HOUR + rollover
+    const count = counts[slot] || 0
+    const left = Math.max(0, cap - count)
+    remaining[slot] = left
+    rollover = Math.min(left, MAX_PIZZAS_PER_HOUR)
+  }
+  return remaining
+}
+
+const TOPPING_LABELS = {
+  mushrooms: 'פטריות', olives: 'זיתים', peppers: 'פלפלים',
+  onion: 'בצל', corn: 'תירס', chicken: 'עוף',
+  pepperoni: 'פפרוני', extra_cheese: 'גבינה כפולה',
+}
+const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
+
+function portionVisual(portion, sections) {
+  const sel = n => sections.includes(n)
+  const on = '#d44010', off = '#faf7f4', dv = '2px solid #555'
+
+  let rows
+  if (portion === 'half') {
+    // sec1=right, sec2=left  →  LTR: left=sec2, right=sec1
+    rows = `<tr>
+      <td style="width:50%;background:${sel(2) ? on : off};border-right:${dv}"></td>
+      <td style="width:50%;background:${sel(1) ? on : off}"></td>
+    </tr>`
+  } else if (portion === 'third') {
+    // sec1=upper-right, sec2=bottom, sec3=upper-left
+    // approximate as: top row (sec3 | sec1), bottom row full-width (sec2)
+    rows = `<tr style="height:60%">
+      <td style="background:${sel(3) ? on : off};border-right:${dv};border-bottom:${dv}"></td>
+      <td style="background:${sel(1) ? on : off};border-bottom:${dv}"></td>
+    </tr>
+    <tr style="height:40%">
+      <td colspan="2" style="background:${sel(2) ? on : off}"></td>
+    </tr>`
+  } else {
+    // sec1=upper-right, sec2=lower-right, sec3=lower-left, sec4=upper-left
+    rows = `<tr>
+      <td style="width:50%;background:${sel(4) ? on : off};border-right:${dv};border-bottom:${dv}"></td>
+      <td style="width:50%;background:${sel(1) ? on : off};border-bottom:${dv}"></td>
+    </tr>
+    <tr>
+      <td style="background:${sel(3) ? on : off};border-right:${dv}"></td>
+      <td style="background:${sel(2) ? on : off}"></td>
+    </tr>`
+  }
+
+  return `<span style="display:inline-block;width:26px;height:26px;border-radius:50%;border:2px solid #555;overflow:hidden;vertical-align:middle;margin-right:4px"><table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed;direction:ltr">${rows}</table></span>`
+}
+
+function buildOrderHtml(pizzas) {
+  return pizzas.map((p, i) => {
+    const sauce = Object.entries(p.sauces).find(([, v]) => v)
+    const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : 'ללא סוג'
+    const toppingLines = Object.entries(p.toppings)
+      .filter(([, v]) => v)
+      .map(([k, v]) => {
+        const label = TOPPING_LABELS[k]
+        if (v === 'full') return `<span>${label}</span>`
+        const img = portionVisual(v.portion, v.sections)
+        return `<span style="display:inline-flex;align-items:center">${label} ${img}</span>`
+      })
+    const toppingsHtml = toppingLines.length
+      ? toppingLines.join('<span style="color:#78716c"> &nbsp;·&nbsp; </span>')
+      : '<span style="color:#78716c">ללא תוספות</span>'
+    const removalsHtml = p.removals && p.removals.length
+      ? `<div style="margin-top:4px;font-size:12px;color:#78716c">ללא: ${p.removals.join(', ')}</div>`
+      : ''
+    return `<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #e7e2dc">
+      <div style="font-weight:bold;margin-bottom:6px">פיצה ${i + 1} — ${sauceLabel}</div>
+      <div style="font-size:13px">${toppingsHtml}</div>
+      ${removalsHtml}
+    </div>`
+  }).join('')
+}
+
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -13,7 +103,7 @@ export default async function handler(req, res) {
     token: process.env.KV_REST_API_TOKEN,
   })
 
-  const { customer_name, customer_phone, pickup_time, order_details, total_price, pizza_count } = req.body
+  const { customer_name, customer_phone, pickup_time, order_details, total_price, pizza_count, payment_method, pizzas } = req.body
 
   // Bucket by 10-minute slot: round down minutes to nearest 10
   const [h, m] = pickup_time.split(':')
@@ -25,11 +115,14 @@ export default async function handler(req, res) {
   const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
   const ttl = Math.floor((midnight - now) / 1000)
 
-  const currentCount = (await redis.get(key)) || 0
+  const allCounts = await Promise.all(
+    SLOTS.map(s => redis.get(`orders:${s}`).then(v => parseInt(v) || 0))
+  )
+  const allSlotCounts = Object.fromEntries(SLOTS.map((s, i) => [s, allCounts[i]]))
+  const remaining = computeRemaining(allSlotCounts)[slot]
   const incoming = parseInt(pizza_count) || 1
 
-  if (currentCount + incoming > MAX_PIZZAS_PER_HOUR) {
-    const remaining = MAX_PIZZAS_PER_HOUR - currentCount
+  if (incoming > remaining) {
     const msg = remaining <= 0
       ? `השעה ${pickup_time} מלאה, אנא בחר שעה אחרת`
       : remaining === 1
@@ -49,6 +142,7 @@ export default async function handler(req, res) {
     `לקוח: ${customer_name}`,
     `טלפון: ${customer_phone}`,
     `שעת איסוף: ${pickup_time}`,
+    `אמצעי תשלום: ${payment_method}`,
     ``,
     `פרטי ההזמנה:`,
     order_details,
@@ -71,10 +165,11 @@ export default async function handler(req, res) {
     <tr><td style="padding:6px 0;color:#78716c;width:120px">לקוח</td><td style="padding:6px 0;font-weight:bold">${customer_name}</td></tr>
     <tr><td style="padding:6px 0;color:#78716c">טלפון</td><td style="padding:6px 0">${customer_phone}</td></tr>
     <tr><td style="padding:6px 0;color:#78716c">שעת איסוף</td><td style="padding:6px 0;font-weight:bold">${pickup_time}</td></tr>
+    <tr><td style="padding:6px 0;color:#78716c">אמצעי תשלום</td><td style="padding:6px 0">${payment_method}</td></tr>
   </table>
   <div style="background:#f8f5f1;border-radius:8px;padding:16px;margin:16px 0">
-    <p style="margin:0 0 8px;font-weight:bold;color:#78716c;font-size:13px">פרטי ההזמנה</p>
-    ${orderDetailsHtml}
+    <p style="margin:0 0 12px;font-weight:bold;color:#78716c;font-size:13px">פרטי ההזמנה</p>
+    ${buildOrderHtml(pizzas || [])}
   </div>
   <div style="background:#d44010;color:#fff;border-radius:8px;padding:12px 16px;display:inline-block;margin-top:8px">
     <span style="font-size:18px;font-weight:bold">סה"כ לתשלום: ${total_price}</span>
@@ -90,7 +185,7 @@ export default async function handler(req, res) {
           Name: 'פיצריה מהלב',
         },
         To: [{ Email: process.env.MAILJET_TO_EMAIL }],
-        Subject: `🍕 הזמנה חדשה — ${customer_name} — ${pickup_time}`,
+        Subject: `🍕 הזמנה חדשה — ${customer_name} — ${pizza_count} פיצות — ${pickup_time}`,
         TextPart: text,
         HTMLPart: html,
       },

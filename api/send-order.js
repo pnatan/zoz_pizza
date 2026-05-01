@@ -10,23 +10,35 @@ const SLOTS = Array.from({ length: 19 }, (_, i) => {
   return `${h}:${m}`
 }).filter(t => t <= '21:00')
 
-function computeRemaining(counts) {
+function computeRemaining(counts, capacities) {
   const remaining = {}
+  const rolloverProvided = {}
   let rollover = 0
   for (const slot of SLOTS) {
-    const cap = MAX_PIZZAS_PER_HOUR + rollover
+    const max = capacities[slot] ?? MAX_PIZZAS_PER_HOUR
+    const cap = max + rollover
     const count = counts[slot] || 0
     const left = Math.max(0, cap - count)
     remaining[slot] = left
-    rollover = Math.min(left, MAX_PIZZAS_PER_HOUR)
+    rollover = count >= max ? 0 : Math.min(left, max)
+    rolloverProvided[slot] = rollover
+  }
+  for (let i = 0; i < SLOTS.length - 1; i++) {
+    const slot = SLOTS[i]
+    const next = SLOTS[i + 1]
+    const max = capacities[slot] ?? MAX_PIZZAS_PER_HOUR
+    const provided = rolloverProvided[slot]
+    if (provided > 0) {
+      const consumed = Math.min(provided, Math.max(0, (counts[next] || 0) - max))
+      remaining[slot] -= consumed
+    }
   }
   return remaining
 }
 
 const TOPPING_LABELS = {
-  mushrooms: 'פטריות', olives: 'זיתים', peppers: 'פלפלים',
-  onion: 'בצל', corn: 'תירס', chicken: 'עוף',
-  pepperoni: 'פפרוני', extra_cheese: 'גבינה כפולה',
+  onion: 'בצל', corn: 'תירס', mushrooms: 'פטריות', olives: 'זיתים', hot_pepper: 'פלפל חריף',
+  pepperoni: 'פפרוני', corned_beef: 'קורנביף', tuna: 'טונה', anchovy: 'אנשובי',
 }
 const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
 
@@ -80,7 +92,7 @@ function buildOrderHtml(pizzas) {
       })
     const toppingsHtml = toppingLines.length
       ? toppingLines.join('<span style="color:#78716c"> &nbsp;·&nbsp; </span>')
-      : '<span style="color:#78716c">ללא תוספות</span>'
+      : sauce?.[0] === 'margarita' ? '<span style="color:#78716c">ללא תוספות</span>' : ''
     const removalsHtml = p.removals && p.removals.length
       ? `<div style="margin-top:4px;font-size:12px;color:#78716c">ללא: ${p.removals.join(', ')}</div>`
       : ''
@@ -98,64 +110,69 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const redis = new Redis({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
-  })
+  try {
+    const redis = new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    })
 
-  const { customer_name, customer_phone, pickup_time, order_details, total_price, pizza_count, payment_method, pizzas } = req.body
+    const { customer_name, customer_phone, pickup_time, order_details, total_price, pizza_count, payment_method, pizzas } = req.body
 
-  // Bucket by 10-minute slot: round down minutes to nearest 10
-  const [h, m] = pickup_time.split(':')
-  const slot = `${h}:${String(Math.floor(parseInt(m) / 10) * 10).padStart(2, '0')}`
-  const key = `orders:${slot}`
+    // Bucket by 10-minute slot: round down minutes to nearest 10
+    const [h, m] = pickup_time.split(':')
+    const slot = `${h}:${String(Math.floor(parseInt(m) / 10) * 10).padStart(2, '0')}`
+    const key = `orders:${slot}`
 
-  // Seconds remaining until midnight UTC (restaurant is closed by then)
-  const now = new Date()
-  const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-  const ttl = Math.floor((midnight - now) / 1000)
+    // Seconds remaining until midnight UTC (restaurant is closed by then)
+    const now = new Date()
+    const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+    const ttl = Math.floor((midnight - now) / 1000)
 
-  const allCounts = await Promise.all(
-    SLOTS.map(s => redis.get(`orders:${s}`).then(v => parseInt(v) || 0))
-  )
-  const allSlotCounts = Object.fromEntries(SLOTS.map((s, i) => [s, allCounts[i]]))
-  const remaining = computeRemaining(allSlotCounts)[slot]
-  const incoming = parseInt(pizza_count) || 1
+    const [allCounts, capacityResults] = await Promise.all([
+      Promise.all(SLOTS.map(s => redis.get(`orders:${s}`).then(v => parseInt(v) || 0))),
+      Promise.all(SLOTS.map(s => redis.get(`slot:capacity:${s}`))),
+    ])
+    const allSlotCounts = Object.fromEntries(SLOTS.map((s, i) => [s, allCounts[i]]))
+    const slotCapacities = Object.fromEntries(
+      SLOTS.map((s, i) => [s, capacityResults[i] ? parseInt(capacityResults[i]) : null]).filter(([, v]) => v !== null)
+    )
+    const remaining = computeRemaining(allSlotCounts, slotCapacities)[slot]
+    const incoming = parseInt(pizza_count) || 1
 
-  if (incoming > remaining) {
-    const msg = remaining <= 0
-      ? `השעה ${pickup_time} מלאה, אנא בחר שעה אחרת`
-      : remaining === 1
-        ? `נשארה רק 1 פיצה פנויה בשעה ${pickup_time}`
-        : `נשארו רק ${remaining} פיצות פנויות בשעה ${pickup_time}`
-    return res.status(429).json({ error: msg })
-  }
+    if (incoming > remaining) {
+      const msg = remaining <= 0
+        ? `השעה ${pickup_time} מלאה, אנא בחר שעה אחרת`
+        : remaining === 1
+          ? `נשארה רק 1 פיצה פנויה בשעה ${pickup_time}`
+          : `נשארו רק ${remaining} פיצות פנויות בשעה ${pickup_time}`
+      return res.status(429).json({ error: msg })
+    }
 
-  const mailjet = new Mailjet({
-    apiKey: process.env.MAILJET_API_KEY,
-    apiSecret: process.env.MAILJET_SECRET_KEY,
-  })
+    const mailjet = new Mailjet({
+      apiKey: process.env.MAILJET_API_KEY,
+      apiSecret: process.env.MAILJET_SECRET_KEY,
+    })
 
-  const text = [
-    `הזמנה חדשה מפיצריה מהלב`,
-    ``,
-    `לקוח: ${customer_name}`,
-    `טלפון: ${customer_phone}`,
-    `שעת איסוף: ${pickup_time}`,
-    `אמצעי תשלום: ${payment_method}`,
-    ``,
-    `פרטי ההזמנה:`,
-    order_details,
-    ``,
-    `סה"כ לתשלום: ${total_price}`,
-  ].join('\n')
+    const text = [
+      `הזמנה חדשה מפיצריה מהלב`,
+      ``,
+      `לקוח: ${customer_name}`,
+      `טלפון: ${customer_phone}`,
+      `שעת איסוף: ${pickup_time}`,
+      `אמצעי תשלום: ${payment_method}`,
+      ``,
+      `פרטי ההזמנה:`,
+      order_details,
+      ``,
+      `סה"כ לתשלום: ${total_price}`,
+    ].join('\n')
 
-  const orderDetailsHtml = order_details
-    .split('\n')
-    .map(line => `<p style="margin:2px 0">${line}</p>`)
-    .join('')
+    const orderDetailsHtml = order_details
+      .split('\n')
+      .map(line => `<p style="margin:2px 0">${line}</p>`)
+      .join('')
 
-  const html = `
+    const html = `
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="UTF-8"></head>
@@ -177,24 +194,28 @@ export default async function handler(req, res) {
 </body>
 </html>`
 
-  await mailjet.post('send', { version: 'v3.1' }).request({
-    Messages: [
-      {
-        From: {
-          Email: process.env.MAILJET_FROM_EMAIL,
-          Name: 'פיצריה מהלב',
+    await mailjet.post('send', { version: 'v3.1' }).request({
+      Messages: [
+        {
+          From: {
+            Email: process.env.MAILJET_FROM_EMAIL,
+            Name: 'פיצריה מהלב',
+          },
+          To: [{ Email: process.env.MAILJET_TO_EMAIL }],
+          Subject: `🍕 הזמנה חדשה — ${customer_name} — ${pizza_count} פיצות — ${pickup_time}`,
+          TextPart: text,
+          HTMLPart: html,
         },
-        To: [{ Email: process.env.MAILJET_TO_EMAIL }],
-        Subject: `🍕 הזמנה חדשה — ${customer_name} — ${pizza_count} פיצות — ${pickup_time}`,
-        TextPart: text,
-        HTMLPart: html,
-      },
-    ],
-  })
+      ],
+    })
 
-  // Increment count only after successful email send
-  await redis.incrby(key, incoming)
-  await redis.expire(key, ttl)
+    // Increment count only after successful email send
+    await redis.incrby(key, incoming)
+    await redis.expire(key, ttl)
 
-  return res.status(200).json({ ok: true })
+    return res.status(200).json({ ok: true })
+  } catch (err) {
+    console.error('send-order error:', err)
+    return res.status(500).json({ error: 'שגיאה בשליחת ההזמנה, נסה שוב' })
+  }
 }

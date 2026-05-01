@@ -3,9 +3,8 @@ import PizzaCard from './PizzaCard'
 import './OrderSection.css'
 
 const TOPPING_LABELS = {
-  mushrooms: 'פטריות', olives: 'זיתים', peppers: 'פלפלים',
-  onion: 'בצל', corn: 'תירס', chicken: 'עוף',
-  pepperoni: 'פפרוני', extra_cheese: 'גבינה כפולה',
+  onion: 'בצל', corn: 'תירס', mushrooms: 'פטריות', olives: 'זיתים', hot_pepper: 'פלפל חריף',
+  pepperoni: 'פפרוני', corned_beef: 'קורנביף', tuna: 'טונה', anchovy: 'אנשובי',
 }
 const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
 
@@ -17,6 +16,7 @@ const SECTION_NAMES = {
 
 function formatPizzas(pizzas) {
   return pizzas.map((p, i) => {
+    const sauce = Object.entries(p.sauces).find(([, v]) => v)
     const toppings = Object.entries(p.toppings)
       .filter(([, v]) => v)
       .map(([k, v]) => {
@@ -24,8 +24,7 @@ function formatPizzas(pizzas) {
         const names = v.sections.map(s => SECTION_NAMES[v.portion][s - 1])
         return `${TOPPING_LABELS[k]} (${names.join(' + ')})`
       })
-      .join(', ') || 'ללא תוספות'
-    const sauce = Object.entries(p.sauces).find(([, v]) => v)
+      .join(', ') || (sauce?.[0] === 'margarita' ? 'ללא תוספות' : '')
     const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : 'ללא רוטב'
     const price = getPizzaPrice(p)
     const removals = p.removals && p.removals.length > 0 ? `\n  ללא: ${p.removals.join(', ')}` : ''
@@ -42,13 +41,16 @@ const PICKUP_TIMES = Array.from({ length: 19 }, (_, i) => {
 }).filter(t => t <= '21:00')
 
 const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
-const TOPPING_PRICE = 4
+const TOPPING_PRICES = {
+  onion: 4, corn: 4, mushrooms: 4, olives: 4, hot_pepper: 4,
+  pepperoni: 7, corned_beef: 7, tuna: 7, anchovy: 7,
+}
 
 function getPizzaPrice(pizza) {
   const type = Object.entries(pizza.sauces).find(([, v]) => v)
   const basePrice = type ? PIZZA_PRICES[type[0]] : 0
-  const toppingCount = Object.values(pizza.toppings).filter(Boolean).length
-  return basePrice + toppingCount * TOPPING_PRICE
+  const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
+  return basePrice + toppingsPrice
 }
 const MAX_PIZZAS = 3
 
@@ -56,7 +58,7 @@ function createEmptyPizza(id) {
   return {
     id,
     name: '',
-    toppings: { mushrooms: null, olives: null, peppers: null, onion: null, corn: null, chicken: null, pepperoni: null, extra_cheese: null },
+    toppings: { onion: null, corn: null, mushrooms: null, olives: null, hot_pepper: null, pepperoni: null, corned_beef: null, tuna: null, anchovy: null },
     sauces: { margarita: false, meat: false, pesto: false, white: false },
     removals: [],
   }
@@ -74,6 +76,7 @@ export default function OrderSection() {
   const [error, setError] = useState(null)
   const [phoneError, setPhoneError] = useState(null)
   const [slotRemaining, setSlotRemaining] = useState({})
+  const [toppingsDisabled, setToppingsDisabled] = useState([])
 
   function validatePhone(value) {
     const digits = value.replace(/[-\s]/g, '')
@@ -83,7 +86,10 @@ export default function OrderSection() {
   function loadAvailability() {
     fetch('/api/get-availability')
       .then(r => r.json())
-      .then(data => setSlotRemaining(data.slotRemaining || {}))
+      .then(data => {
+        setSlotRemaining(data.slotRemaining || {})
+        setToppingsDisabled(data.toppingsDisabled || [])
+      })
       .catch(() => {})
   }
 
@@ -143,8 +149,9 @@ export default function OrderSection() {
         }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '')
+        let message = ''
+        try { message = (await res.json()).error } catch {}
+        throw new Error(message || 'שגיאה בשליחת ההזמנה, נסה שוב')
       }
       setSubmitted(true)
       loadAvailability()
@@ -199,6 +206,7 @@ export default function OrderSection() {
               index={index}
               canRemove={pizzas.length > 1}
               typeError={!Object.values(pizza.sauces).some(Boolean) && !!error}
+              disabledToppings={toppingsDisabled}
               onChange={updated => updatePizza(pizza.id, updated)}
               onRemove={() => removePizza(pizza.id)}
             />
@@ -231,9 +239,7 @@ export default function OrderSection() {
               const isFull = remaining < pizzas.length
               const label = isFull
                 ? `${t} — מלא`
-                : displayed === 1
-                  ? `${t} — נותרה 1`
-                  : `${t} — נותרו ${displayed}`
+                : `${t} — נותרו ${displayed}`
               return (
                 <option key={t} value={t} disabled={isFull}>
                   {label}

@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import './PizzaCard.css'
 
 const TOPPINGS = [
-  { key: 'mushrooms', label: 'פטריות' },
-  { key: 'olives', label: 'זיתים' },
-  { key: 'peppers', label: 'פלפלים' },
-  { key: 'onion', label: 'בצל' },
-  { key: 'corn', label: 'תירס' },
-  { key: 'chicken', label: 'עוף' },
-  { key: 'pepperoni', label: 'פפרוני' },
-  { key: 'extra_cheese', label: 'גבינה כפולה' },
+  { key: 'onion', label: 'בצל', price: 4 },
+  { key: 'corn', label: 'תירס', price: 4 },
+  { key: 'mushrooms', label: 'פטריות', price: 4 },
+  { key: 'olives', label: 'זיתים', price: 4 },
+  { key: 'hot_pepper', label: 'פלפל חריף', price: 4 },
+  { key: 'pepperoni', label: 'פפרוני', price: 7 },
+  { key: 'corned_beef', label: 'קורנביף', price: 7 },
+  { key: 'tuna', label: 'טונה', price: 7 },
+  { key: 'anchovy', label: 'אנשובי', price: 7 },
 ]
+
+const TOPPING_PRICES = Object.fromEntries(TOPPINGS.map(t => [t.key, t.price]))
 
 const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
 
@@ -28,7 +31,6 @@ const TYPE_INGREDIENTS = {
   white: ['תערובת גבינות', 'מוצרלה', 'פטריות', 'שום קונפי', 'זילוף בלסמי', 'עלי רוקט'],
 }
 
-const TOPPING_PRICE = 4
 
 const PORTION_LABELS = { full: 'הכל', half: 'חצי', third: 'שליש', quarter: 'רבע' }
 // half-1 = right, half-2 = left
@@ -71,12 +73,16 @@ function PizzaDiagram({ portionType, selectedSections, onToggle }) {
   )
 }
 
-export default function PizzaCard({ pizza, index, canRemove, typeError, onChange, onRemove }) {
+export default function PizzaCard({ pizza, index, canRemove, typeError, disabledToppings = [], onChange, onRemove }) {
   const selectedType = Object.entries(pizza.sauces).find(([, v]) => v)
-  const toppingCount = Object.values(pizza.toppings).filter(Boolean).length
-  const price = selectedType ? PIZZA_PRICES[selectedType[0]] + toppingCount * TOPPING_PRICE : null
+  const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
+  const price = selectedType ? PIZZA_PRICES[selectedType[0]] + toppingsPrice : null
   const ingredients = selectedType ? TYPE_INGREDIENTS[selectedType[0]] : []
   const [toppingsOpen, setToppingsOpen] = useState(false)
+
+  useEffect(() => {
+    setToppingsOpen(selectedType?.[0] === 'margarita')
+  }, [selectedType?.[0]])
 
   function handleToppingChange(key) {
     const current = pizza.toppings[key]
@@ -191,16 +197,19 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, onChange
         </button>
         {toppingsOpen && (
           <div className="toppings-list">
-            {TOPPINGS.map(({ key, label }) => {
+            {TOPPINGS.map(({ key, label, price }, i) => {
               const val = pizza.toppings[key]
               const portionType = !val ? null : val === 'full' ? 'full' : val.portion
               const selectedSections = val && val !== 'full' ? val.sections : []
-              return (
-                <div key={key} className="topping-row">
+              const isLastOfGroup = TOPPINGS[i + 1] && TOPPINGS[i + 1].price !== price
+              const isDisabled = disabledToppings.includes(key)
+              return (<React.Fragment key={key}>
+                <div className={`topping-row${isDisabled ? ' topping-row-disabled' : ''}`}>
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={!!val}
+                      disabled={isDisabled}
                       onChange={() => handleToppingChange(key)}
                     />
                     <span className="custom-checkbox">
@@ -210,7 +219,7 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, onChange
                         </svg>
                       )}
                     </span>
-                    <span className="checkbox-text">{label} <span className="topping-price">4₪</span></span>
+                    <span className="checkbox-text">{label} <span className="topping-price">{price}₪</span></span>
                   </label>
                   {val && (
                     <div className="portion-btns">
@@ -236,7 +245,8 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, onChange
                     </div>
                   )}
                 </div>
-              )
+              {isLastOfGroup && <div className="topping-row-spacer" />}
+              </React.Fragment>)
             })}
           </div>
         )}

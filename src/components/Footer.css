@@ -19,3 +19,14 @@
   color: var(--text-light);
   direction: ltr;
 }
+
+.footer-admin-btn {
+  font-size: 11px;
+  color: var(--text-light);
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+.footer-admin-btn:hover {
+  color: var(--text-muted);
+}

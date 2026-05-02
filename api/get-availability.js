@@ -33,7 +33,11 @@ function computeRemaining(slots, counts, capacities) {
     const max = capacities[slot] ?? MAX_PIZZAS
     const nextMax = capacities[next] ?? MAX_PIZZAS
     const jointCap = max + nextMax - (counts[slot] || 0) - (counts[next] || 0)
-    remaining[slot] = Math.min(remaining[slot], Math.max(0, jointCap))
+    const prevRemaining = i > 0 ? remaining[slots[i - 1]] : 0
+    const prevCoversSlot = prevRemaining > 0 && (counts[slot] || 0) + prevRemaining <= max + nextMax
+    if (!prevCoversSlot) {
+      remaining[slot] = Math.min(remaining[slot], Math.max(0, jointCap))
+    }
   }
   return remaining
 }

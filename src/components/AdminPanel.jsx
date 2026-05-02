@@ -1,10 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import './AdminPanel.css'
-
-const SLOTS = Array.from({ length: 19 }, (_, i) => {
-  const t = 18 * 60 + i * 10
-  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0')
-}).filter(t => t <= '21:00')
 
 const TOPPINGS = [
   { key: 'onion', label: 'בצל' },
@@ -20,6 +15,11 @@ const TOPPINGS = [
 
 const DEFAULT_CAPACITY = 3
 
+const TIME_OPTIONS = Array.from({ length: 56 }, (_, i) => {
+  const t = 10 * 60 + i * 15
+  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0')
+})
+
 export default function AdminPanel({ onClose }) {
   const [password, setPassword] = useState(() => localStorage.getItem('admin_password') || '')
   const [loggedIn, setLoggedIn] = useState(false)
@@ -28,6 +28,9 @@ export default function AdminPanel({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [capacityInputs, setCapacityInputs] = useState({})
   const [countInputs, setCountInputs] = useState({})
+  const [configStart, setConfigStart] = useState('18:00')
+  const [configEnd, setConfigEnd] = useState('21:00')
+  const [configSaving, setConfigSaving] = useState(false)
 
   async function login(e) {
     e.preventDefault()
@@ -38,9 +41,12 @@ export default function AdminPanel({ onClose }) {
       if (res.status === 401) { setLoginError('סיסמה שגויה'); return }
       const data = await res.json()
       localStorage.setItem('admin_password', password)
+      const slots = data.slots || []
       setState(data)
-      setCapacityInputs(Object.fromEntries(SLOTS.map(s => [s, data.slotCapacities?.[s] ?? ''])))
-      setCountInputs(Object.fromEntries(SLOTS.map(s => [s, data.slotCounts?.[s] ?? 0])))
+      setCapacityInputs(Object.fromEntries(slots.map(s => [s, data.slotCapacities?.[s] ?? ''])))
+      setCountInputs(Object.fromEntries(slots.map(s => [s, data.slotCounts?.[s] ?? 0])))
+      setConfigStart(data.slotsConfig?.start || '18:00')
+      setConfigEnd(data.slotsConfig?.end || '21:00')
       setLoggedIn(true)
     } catch {
       setLoginError('שגיאת חיבור')
@@ -91,6 +97,21 @@ export default function AdminPanel({ onClose }) {
     setCountInputs(prev => ({ ...prev, [slot]: 0 }))
   }
 
+  async function saveConfig() {
+    setConfigSaving(true)
+    try {
+      await post('/api/admin/config', { slotsStart: configStart, slotsEnd: configEnd })
+      const res = await fetch(`/api/admin/state?password=${encodeURIComponent(password)}`)
+      const data = await res.json()
+      const slots = data.slots || []
+      setState(data)
+      setCapacityInputs(Object.fromEntries(slots.map(s => [s, data.slotCapacities?.[s] ?? ''])))
+      setCountInputs(Object.fromEntries(slots.map(s => [s, data.slotCounts?.[s] ?? 0])))
+    } finally {
+      setConfigSaving(false)
+    }
+  }
+
   function logout() {
     localStorage.removeItem('admin_password')
     setLoggedIn(false)
@@ -123,6 +144,8 @@ export default function AdminPanel({ onClose }) {
     )
   }
 
+  const slots = state?.slots || []
+
   return (
     <div className="admin-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="admin-panel admin-panel-wide">
@@ -133,6 +156,35 @@ export default function AdminPanel({ onClose }) {
             <button className="admin-close" onClick={onClose}>✕</button>
           </div>
         </div>
+
+        <section className="admin-section">
+          <h3 className="admin-section-title">שעות פעילות</h3>
+          <div className="admin-config-row">
+            <label className="admin-config-label">משעה</label>
+            <select
+              className="admin-input admin-input-sm"
+              value={configStart}
+              onChange={e => setConfigStart(e.target.value)}
+            >
+              {TIME_OPTIONS.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <label className="admin-config-label">עד שעה</label>
+            <select
+              className="admin-input admin-input-sm"
+              value={configEnd}
+              onChange={e => setConfigEnd(e.target.value)}
+            >
+              {TIME_OPTIONS.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <button className="admin-btn-small" onClick={saveConfig} disabled={configSaving}>
+              {configSaving ? '...' : 'שמור'}
+            </button>
+          </div>
+        </section>
 
         <section className="admin-section">
           <h3 className="admin-section-title">זמינות תוספות</h3>
@@ -163,7 +215,7 @@ export default function AdminPanel({ onClose }) {
               <span>קיבולת</span>
               <span></span>
             </div>
-            {SLOTS.map(slot => (
+            {slots.map(slot => (
               <div key={slot} className="admin-slot-row">
                 <span className="admin-slot-time">{slot}</span>
                 <div className="admin-slot-capacity">

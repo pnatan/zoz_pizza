@@ -14,6 +14,21 @@ const SECTION_NAMES = {
   quarter: ['ימין עליון', 'ימין תחתון', 'שמאל תחתון', 'שמאל עליון'],
 }
 
+const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
+const TOPPING_PRICES = {
+  onion: 4, corn: 4, mushrooms: 4, olives: 4, hot_pepper: 4,
+  pepperoni: 7, corned_beef: 7, tuna: 7, anchovy: 7,
+}
+
+const MAX_PIZZAS = 3
+
+function getPizzaPrice(pizza) {
+  const type = Object.entries(pizza.sauces).find(([, v]) => v)
+  const basePrice = type ? PIZZA_PRICES[type[0]] : 0
+  const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
+  return basePrice + toppingsPrice
+}
+
 function formatPizzas(pizzas) {
   return pizzas.map((p, i) => {
     const sauce = Object.entries(p.sauces).find(([, v]) => v)
@@ -32,27 +47,6 @@ function formatPizzas(pizzas) {
     return `פיצה ${i + 1}${name}\n  סוג: ${sauceLabel}\n  תוספות: ${toppings}${removals}\n  מחיר: ₪${price}`
   }).join('\n\n')
 }
-
-const PICKUP_TIMES = Array.from({ length: 19 }, (_, i) => {
-  const totalMinutes = 18 * 60 + i * 10
-  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
-  const m = String(totalMinutes % 60).padStart(2, '0')
-  return `${h}:${m}`
-}).filter(t => t <= '21:00')
-
-const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
-const TOPPING_PRICES = {
-  onion: 4, corn: 4, mushrooms: 4, olives: 4, hot_pepper: 4,
-  pepperoni: 7, corned_beef: 7, tuna: 7, anchovy: 7,
-}
-
-function getPizzaPrice(pizza) {
-  const type = Object.entries(pizza.sauces).find(([, v]) => v)
-  const basePrice = type ? PIZZA_PRICES[type[0]] : 0
-  const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
-  return basePrice + toppingsPrice
-}
-const MAX_PIZZAS = 3
 
 function createEmptyPizza(id) {
   return {
@@ -77,6 +71,7 @@ export default function OrderSection() {
   const [phoneError, setPhoneError] = useState(null)
   const [slotRemaining, setSlotRemaining] = useState({})
   const [toppingsDisabled, setToppingsDisabled] = useState([])
+  const [slots, setSlots] = useState([])
 
   function validatePhone(value) {
     const digits = value.replace(/[-\s]/g, '')
@@ -89,6 +84,7 @@ export default function OrderSection() {
       .then(data => {
         setSlotRemaining(data.slotRemaining || {})
         setToppingsDisabled(data.toppingsDisabled || [])
+        setSlots(data.slots || [])
       })
       .catch(() => {})
   }
@@ -233,19 +229,16 @@ export default function OrderSection() {
             required
           >
             <option value="" disabled>בחר שעה</option>
-            {PICKUP_TIMES.map(t => {
-              const remaining = slotRemaining[t] ?? MAX_PIZZAS
-              const displayed = Math.min(remaining, MAX_PIZZAS)
-              const isFull = remaining < pizzas.length
-              const label = isFull
-                ? `${t} — מלא`
-                : `${t} — נותרו ${displayed}`
-              return (
-                <option key={t} value={t} disabled={isFull}>
-                  {label}
-                </option>
-              )
-            })}
+            {slots
+              .filter(t => (slotRemaining[t] ?? MAX_PIZZAS) >= pizzas.length)
+              .map(t => {
+                const remaining = slotRemaining[t] ?? MAX_PIZZAS
+                return (
+                  <option key={t} value={t}>
+                    {`${t} — נותרו ${remaining}`}
+                  </option>
+                )
+              })}
           </select>
         </div>
 

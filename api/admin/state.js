@@ -1,11 +1,5 @@
-import { Redis } from '@upstash/redis'
-
-const SLOTS = Array.from({ length: 19 }, (_, i) => {
-  const totalMinutes = 18 * 60 + i * 10
-  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
-  const m = String(totalMinutes % 60).padStart(2, '0')
-  return `${h}:${m}`
-}).filter(t => t <= '21:00')
+import { getRedis } from '../_redis.js'
+import { generateSlots, getSlotsConfig } from '../_slots.js'
 
 const TOPPING_KEYS = ['onion', 'corn', 'mushrooms', 'olives', 'hot_pepper', 'pepperoni', 'corned_beef', 'tuna', 'anchovy']
 
@@ -14,10 +8,9 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const redis = new Redis({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
-  })
+  const redis = getRedis()
+  const slotsConfig = await getSlotsConfig(redis)
+  const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end)
 
   const [disabledResults, capacityResults, countResults] = await Promise.all([
     Promise.all(TOPPING_KEYS.map(k => redis.get(`topping:disabled:${k}`))),
@@ -31,5 +24,5 @@ export default async function handler(req, res) {
   )
   const slotCounts = Object.fromEntries(SLOTS.map((s, i) => [s, countResults[i]]))
 
-  return res.status(200).json({ toppingsDisabled, slotCapacities, slotCounts })
+  return res.status(200).json({ slots: SLOTS, toppingsDisabled, slotCapacities, slotCounts, slotsConfig })
 }

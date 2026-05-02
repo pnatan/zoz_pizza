@@ -1,31 +1,25 @@
 import Mailjet from 'node-mailjet'
-import { Redis } from '@upstash/redis'
+import { getRedis } from './_redis.js'
+import { generateSlots, getSlotsConfig } from './_slots.js'
 
 const MAX_PIZZAS_PER_HOUR = 3
 
-const SLOTS = Array.from({ length: 19 }, (_, i) => {
-  const totalMinutes = 18 * 60 + i * 10
-  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
-  const m = String(totalMinutes % 60).padStart(2, '0')
-  return `${h}:${m}`
-}).filter(t => t <= '21:00')
-
-function computeRemaining(counts, capacities) {
+function computeRemaining(slots, counts, capacities) {
   const remaining = {}
   const rolloverProvided = {}
   let rollover = 0
-  for (const slot of SLOTS) {
+  for (const slot of slots) {
     const max = capacities[slot] ?? MAX_PIZZAS_PER_HOUR
     const cap = max + rollover
     const count = counts[slot] || 0
     const left = Math.max(0, cap - count)
     remaining[slot] = left
-    rollover = count >= max ? 0 : Math.min(left, max)
+    rollover = count >= max ? 0 : Math.max(0, max - count)
     rolloverProvided[slot] = rollover
   }
-  for (let i = 0; i < SLOTS.length - 1; i++) {
-    const slot = SLOTS[i]
-    const next = SLOTS[i + 1]
+  for (let i = 0; i < slots.length - 1; i++) {
+    const slot = slots[i]
+    const next = slots[i + 1]
     const max = capacities[slot] ?? MAX_PIZZAS_PER_HOUR
     const provided = rolloverProvided[slot]
     if (provided > 0) {
@@ -86,7 +80,10 @@ function buildOrderHtml(pizzas) {
       .filter(([, v]) => v)
       .map(([k, v]) => {
         const label = TOPPING_LABELS[k]
-        if (v === 'full') return `<span>${label}</span>`
+        if (v === 'full') {
+          const fullCircle = `<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:#d44010;border:2px solid #555;vertical-align:middle;margin-right:4px"></span>`
+          return `<span style="display:inline-flex;align-items:center">${label} ${fullCircle}</span>`
+        }
         const img = portionVisual(v.portion, v.sections)
         return `<span style="display:inline-flex;align-items:center">${label} ${img}</span>`
       })
@@ -111,16 +108,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const redis = new Redis({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    })
+    const redis = getRedis()
+    const slotsConfig = await getSlotsConfig(redis)
+    const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end)
 
     const { customer_name, customer_phone, pickup_time, order_details, total_price, pizza_count, payment_method, pizzas } = req.body
 
-    // Bucket by 10-minute slot: round down minutes to nearest 10
+    // Bucket by 15-minute slot: round down minutes to nearest 15
     const [h, m] = pickup_time.split(':')
-    const slot = `${h}:${String(Math.floor(parseInt(m) / 10) * 10).padStart(2, '0')}`
+    const slot = `${h}:${String(Math.floor(parseInt(m) / 15) * 15).padStart(2, '0')}`
     const key = `orders:${slot}`
 
     // Seconds remaining until midnight UTC (restaurant is closed by then)
@@ -136,7 +132,7 @@ export default async function handler(req, res) {
     const slotCapacities = Object.fromEntries(
       SLOTS.map((s, i) => [s, capacityResults[i] ? parseInt(capacityResults[i]) : null]).filter(([, v]) => v !== null)
     )
-    const remaining = computeRemaining(allSlotCounts, slotCapacities)[slot]
+    const remaining = computeRemaining(SLOTS, allSlotCounts, slotCapacities)[slot]
     const incoming = parseInt(pizza_count) || 1
 
     if (incoming > remaining) {

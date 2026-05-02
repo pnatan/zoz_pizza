@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis'
+import { getRedis } from '../_redis.js'
 
 function secondsUntil3AM() {
   const now = new Date()
@@ -15,13 +15,10 @@ export default async function handler(req, res) {
   const { password, key, disabled } = req.body
   if (password !== process.env.ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' })
 
-  const redis = new Redis({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
-  })
+  const redis = getRedis()
 
   if (disabled) {
-    await redis.set(`topping:disabled:${key}`, '1', { ex: secondsUntil3AM() })
+    await redis.set(`topping:disabled:${key}`, '1', 'EX', secondsUntil3AM())
   } else {
     await redis.del(`topping:disabled:${key}`)
   }

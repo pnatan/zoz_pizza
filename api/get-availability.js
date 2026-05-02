@@ -1,36 +1,32 @@
-import { Redis } from '@upstash/redis'
-
-const SLOTS = Array.from({ length: 19 }, (_, i) => {
-  const totalMinutes = 18 * 60 + i * 10
-  const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
-  const m = String(totalMinutes % 60).padStart(2, '0')
-  return `${h}:${m}`
-}).filter(t => t <= '21:00')
+import { getRedis } from './_redis.js'
+import { generateSlots, getSlotsConfig } from './_slots.js'
 
 const MAX_PIZZAS = 3
 const TOPPING_KEYS = ['onion', 'corn', 'mushrooms', 'olives', 'hot_pepper', 'pepperoni', 'corned_beef', 'tuna', 'anchovy']
 
-function computeRemaining(counts, capacities) {
+function computeRemaining(slots, counts, capacities) {
   const remaining = {}
   const rolloverProvided = {}
   let rollover = 0
-  for (const slot of SLOTS) {
+  for (const slot of slots) {
     const max = capacities[slot] ?? MAX_PIZZAS
     const cap = max + rollover
     const count = counts[slot] || 0
     const left = Math.max(0, cap - count)
     remaining[slot] = left
-    rollover = count >= max ? 0 : Math.min(left, max)
+    rollover = count >= max ? 0 : Math.max(0, max - count)
     rolloverProvided[slot] = rollover
   }
-  for (let i = 0; i < SLOTS.length - 1; i++) {
-    const slot = SLOTS[i]
-    const next = SLOTS[i + 1]
+  for (let i = 0; i < slots.length - 1; i++) {
+    const slot = slots[i]
+    const next = slots[i + 1]
     const max = capacities[slot] ?? MAX_PIZZAS
     const provided = rolloverProvided[slot]
     if (provided > 0) {
       const consumed = Math.min(provided, Math.max(0, (counts[next] || 0) - max))
-      remaining[slot] -= consumed
+      if (consumed > 0) {
+        remaining[slot] = Math.max(0, max - (counts[slot] || 0) - consumed)
+      }
     }
   }
   return remaining
@@ -41,10 +37,9 @@ export default async function handler(req, res) {
   res.setHeader('CDN-Cache-Control', 'no-store')
   res.setHeader('Vercel-CDN-Cache-Control', 'no-store')
 
-  const redis = new Redis({
-    url: process.env.KV_REST_API_URL,
-    token: process.env.KV_REST_API_TOKEN,
-  })
+  const redis = getRedis()
+  const slotsConfig = await getSlotsConfig(redis)
+  const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end)
 
   const [counts, capacityResults, disabledResults] = await Promise.all([
     Promise.all(SLOTS.map(slot => redis.get(`orders:${slot}`).then(v => parseInt(v) || 0))),
@@ -57,7 +52,7 @@ export default async function handler(req, res) {
     SLOTS.map((s, i) => [s, capacityResults[i] ? parseInt(capacityResults[i]) : null]).filter(([, v]) => v !== null)
   )
   const toppingsDisabled = TOPPING_KEYS.filter((_, i) => disabledResults[i] != null)
-  const slotRemaining = computeRemaining(slotCounts, slotCapacities)
+  const slotRemaining = computeRemaining(SLOTS, slotCounts, slotCapacities)
 
-  return res.status(200).json({ slotCounts, slotRemaining, toppingsDisabled })
+  return res.status(200).json({ slots: SLOTS, slotCounts, slotRemaining, toppingsDisabled, slotsConfig })
 }

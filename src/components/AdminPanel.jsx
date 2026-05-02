@@ -27,6 +27,7 @@ export default function AdminPanel({ onClose }) {
   const [state, setState] = useState(null)
   const [loading, setLoading] = useState(false)
   const [capacityInputs, setCapacityInputs] = useState({})
+  const [countInputs, setCountInputs] = useState({})
 
   async function login(e) {
     e.preventDefault()
@@ -39,6 +40,7 @@ export default function AdminPanel({ onClose }) {
       localStorage.setItem('admin_password', password)
       setState(data)
       setCapacityInputs(Object.fromEntries(SLOTS.map(s => [s, data.slotCapacities?.[s] ?? ''])))
+      setCountInputs(Object.fromEntries(SLOTS.map(s => [s, data.slotCounts?.[s] ?? 0])))
       setLoggedIn(true)
     } catch {
       setLoginError('שגיאת חיבור')
@@ -77,9 +79,16 @@ export default function AdminPanel({ onClose }) {
     })
   }
 
+  async function saveCount(slot) {
+    const count = parseInt(countInputs[slot]) || 0
+    await post('/api/admin/clear-slot', { slot, count })
+    setState(prev => ({ ...prev, slotCounts: { ...prev.slotCounts, [slot]: count } }))
+  }
+
   async function clearSlot(slot) {
-    await post('/api/admin/clear-slot', { slot })
+    await post('/api/admin/clear-slot', { slot, count: 0 })
     setState(prev => ({ ...prev, slotCounts: { ...prev.slotCounts, [slot]: 0 } }))
+    setCountInputs(prev => ({ ...prev, [slot]: 0 }))
   }
 
   function logout() {
@@ -157,7 +166,17 @@ export default function AdminPanel({ onClose }) {
             {SLOTS.map(slot => (
               <div key={slot} className="admin-slot-row">
                 <span className="admin-slot-time">{slot}</span>
-                <span className="admin-slot-count">{state.slotCounts?.[slot] || 0}</span>
+                <div className="admin-slot-capacity">
+                  <input
+                    type="number"
+                    className="admin-input admin-input-sm"
+                    min="0"
+                    max="50"
+                    value={countInputs[slot] ?? 0}
+                    onChange={e => setCountInputs(prev => ({ ...prev, [slot]: e.target.value }))}
+                  />
+                  <button className="admin-btn-small" onClick={() => saveCount(slot)}>שמור</button>
+                </div>
                 <div className="admin-slot-capacity">
                   <input
                     type="number"

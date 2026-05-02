@@ -119,10 +119,14 @@ export default async function handler(req, res) {
     const slot = `${h}:${String(Math.floor(parseInt(m) / 15) * 15).padStart(2, '0')}`
     const key = `orders:${slot}`
 
-    // Seconds remaining until midnight UTC (restaurant is closed by then)
+    // Seconds remaining until 3AM Israel time (1AM UTC)
     const now = new Date()
-    const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-    const ttl = Math.floor((midnight - now) / 1000)
+    const next3am = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(),
+      now.getUTCDate() + (now.getUTCHours() >= 1 ? 1 : 0),
+      1, 0, 0
+    ))
+    const ttl = Math.floor((next3am - now) / 1000)
 
     const [allCounts, capacityResults] = await Promise.all([
       Promise.all(SLOTS.map(s => redis.get(`orders:${s}`).then(v => parseInt(v) || 0))),

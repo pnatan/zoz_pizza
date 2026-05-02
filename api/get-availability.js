@@ -10,11 +10,9 @@ function computeRemaining(slots, counts, capacities) {
   let rollover = 0
   for (const slot of slots) {
     const max = capacities[slot] ?? MAX_PIZZAS
-    const cap = max + rollover
     const count = counts[slot] || 0
-    const left = Math.max(0, cap - count)
-    remaining[slot] = left
-    rollover = count >= max ? 0 : Math.max(0, max - count)
+    remaining[slot] = Math.max(0, max + rollover - count)
+    rollover = Math.max(0, max - count)
     rolloverProvided[slot] = rollover
   }
   for (let i = 0; i < slots.length - 1; i++) {
@@ -28,6 +26,14 @@ function computeRemaining(slots, counts, capacities) {
         remaining[slot] = Math.max(0, max - (counts[slot] || 0) - consumed)
       }
     }
+  }
+  for (let i = 0; i < slots.length - 1; i++) {
+    const slot = slots[i]
+    const next = slots[i + 1]
+    const max = capacities[slot] ?? MAX_PIZZAS
+    const nextMax = capacities[next] ?? MAX_PIZZAS
+    const jointCap = max + nextMax - (counts[slot] || 0) - (counts[next] || 0)
+    remaining[slot] = Math.min(remaining[slot], Math.max(0, jointCap))
   }
   return remaining
 }

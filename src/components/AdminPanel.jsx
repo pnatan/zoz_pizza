@@ -13,8 +13,6 @@ const TOPPINGS = [
   { key: 'anchovy', label: 'אנשובי' },
 ]
 
-const DEFAULT_CAPACITY = 3
-
 const TIME_OPTIONS = Array.from({ length: 56 }, (_, i) => {
   const t = 10 * 60 + i * 15
   return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0')
@@ -26,10 +24,10 @@ export default function AdminPanel({ onClose }) {
   const [loginError, setLoginError] = useState('')
   const [state, setState] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [capacityInputs, setCapacityInputs] = useState({})
   const [countInputs, setCountInputs] = useState({})
   const [configStart, setConfigStart] = useState('18:00')
   const [configEnd, setConfigEnd] = useState('21:00')
+  const [configInterval, setConfigInterval] = useState(15)
   const [configSaving, setConfigSaving] = useState(false)
 
   async function login(e) {
@@ -43,10 +41,10 @@ export default function AdminPanel({ onClose }) {
       localStorage.setItem('admin_password', password)
       const slots = data.slots || []
       setState(data)
-      setCapacityInputs(Object.fromEntries(slots.map(s => [s, data.slotCapacities?.[s] ?? ''])))
       setCountInputs(Object.fromEntries(slots.map(s => [s, data.slotCounts?.[s] ?? 0])))
       setConfigStart(data.slotsConfig?.start || '18:00')
       setConfigEnd(data.slotsConfig?.end || '21:00')
+      setConfigInterval(data.slotsConfig?.interval || 15)
       setLoggedIn(true)
     } catch {
       setLoginError('שגיאת חיבור')
@@ -74,17 +72,6 @@ export default function AdminPanel({ onClose }) {
     }))
   }
 
-  async function saveCapacity(slot) {
-    const val = capacityInputs[slot]
-    const capacity = val === '' ? null : parseInt(val)
-    await post('/api/admin/capacity', { slot, capacity })
-    setState(prev => {
-      const next = { ...prev.slotCapacities }
-      if (capacity == null) delete next[slot]; else next[slot] = capacity
-      return { ...prev, slotCapacities: next }
-    })
-  }
-
   async function saveCount(slot) {
     const count = parseInt(countInputs[slot]) || 0
     await post('/api/admin/clear-slot', { slot, count })
@@ -100,12 +87,11 @@ export default function AdminPanel({ onClose }) {
   async function saveConfig() {
     setConfigSaving(true)
     try {
-      await post('/api/admin/config', { slotsStart: configStart, slotsEnd: configEnd })
+      await post('/api/admin/config', { slotsStart: configStart, slotsEnd: configEnd, slotsInterval: configInterval })
       const res = await fetch(`/api/admin/state?password=${encodeURIComponent(password)}`)
       const data = await res.json()
       const slots = data.slots || []
       setState(data)
-      setCapacityInputs(Object.fromEntries(slots.map(s => [s, data.slotCapacities?.[s] ?? ''])))
       setCountInputs(Object.fromEntries(slots.map(s => [s, data.slotCounts?.[s] ?? 0])))
     } finally {
       setConfigSaving(false)
@@ -160,26 +146,42 @@ export default function AdminPanel({ onClose }) {
         <section className="admin-section">
           <h3 className="admin-section-title">שעות פעילות</h3>
           <div className="admin-config-row">
-            <label className="admin-config-label">משעה</label>
-            <select
-              className="admin-input admin-input-sm"
-              value={configStart}
-              onChange={e => setConfigStart(e.target.value)}
-            >
-              {TIME_OPTIONS.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <label className="admin-config-label">עד שעה</label>
-            <select
-              className="admin-input admin-input-sm"
-              value={configEnd}
-              onChange={e => setConfigEnd(e.target.value)}
-            >
-              {TIME_OPTIONS.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            <div className="admin-config-field">
+              <label className="admin-config-label">משעה</label>
+              <select
+                className="admin-input admin-select"
+                value={configStart}
+                onChange={e => setConfigStart(e.target.value)}
+              >
+                {TIME_OPTIONS.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div className="admin-config-field">
+              <label className="admin-config-label">עד שעה</label>
+              <select
+                className="admin-input admin-select"
+                value={configEnd}
+                onChange={e => setConfigEnd(e.target.value)}
+              >
+                {TIME_OPTIONS.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div className="admin-config-field">
+              <label className="admin-config-label">מרווח</label>
+              <select
+                className="admin-input admin-select"
+                value={configInterval}
+                onChange={e => setConfigInterval(parseInt(e.target.value))}
+              >
+                {[10, 15, 20, 25, 30].map(n => (
+                  <option key={n} value={n}>{n} דק'</option>
+                ))}
+              </select>
+            </div>
             <button className="admin-btn-small" onClick={saveConfig} disabled={configSaving}>
               {configSaving ? '...' : 'שמור'}
             </button>
@@ -212,7 +214,6 @@ export default function AdminPanel({ onClose }) {
             <div className="admin-slots-header">
               <span>שעה</span>
               <span>הזמנות</span>
-              <span>קיבולת</span>
               <span></span>
             </div>
             {slots.map(slot => (
@@ -228,18 +229,6 @@ export default function AdminPanel({ onClose }) {
                     onChange={e => setCountInputs(prev => ({ ...prev, [slot]: e.target.value }))}
                   />
                   <button className="admin-btn-small" onClick={() => saveCount(slot)}>שמור</button>
-                </div>
-                <div className="admin-slot-capacity">
-                  <input
-                    type="number"
-                    className="admin-input admin-input-sm"
-                    min="0"
-                    max="20"
-                    placeholder={DEFAULT_CAPACITY}
-                    value={capacityInputs[slot] ?? ''}
-                    onChange={e => setCapacityInputs(prev => ({ ...prev, [slot]: e.target.value }))}
-                  />
-                  <button className="admin-btn-small" onClick={() => saveCapacity(slot)}>שמור</button>
                 </div>
                 <button
                   className="admin-btn-danger"

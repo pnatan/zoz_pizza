@@ -110,13 +110,13 @@ export default async function handler(req, res) {
   try {
     const redis = getRedis()
     const slotsConfig = await getSlotsConfig(redis)
-    const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end)
+    const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end, slotsConfig.interval)
 
     const { customer_name, customer_phone, pickup_time, order_details, total_price, pizza_count, payment_method, pizzas } = req.body
 
-    // Bucket by 15-minute slot: round down minutes to nearest 15
+    // Bucket pickup time down to the nearest slot interval
     const [h, m] = pickup_time.split(':')
-    const slot = `${h}:${String(Math.floor(parseInt(m) / 15) * 15).padStart(2, '0')}`
+    const slot = `${h}:${String(Math.floor(parseInt(m) / slotsConfig.interval) * slotsConfig.interval).padStart(2, '0')}`
     const key = `orders:${slot}`
 
     // Seconds remaining until 3AM Israel time (1AM UTC)

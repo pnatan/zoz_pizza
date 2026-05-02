@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
   const redis = getRedis()
   const slotsConfig = await getSlotsConfig(redis)
-  const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end)
+  const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end, slotsConfig.interval)
 
   const [counts, capacityResults, disabledResults] = await Promise.all([
     Promise.all(SLOTS.map(slot => redis.get(`orders:${slot}`).then(v => parseInt(v) || 0))),

@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   const redis = getRedis()
   const slotsConfig = await getSlotsConfig(redis)
-  const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end)
+  const SLOTS = generateSlots(slotsConfig.start, slotsConfig.end, slotsConfig.interval)
 
   const [disabledResults, capacityResults, countResults] = await Promise.all([
     Promise.all(TOPPING_KEYS.map(k => redis.get(`topping:disabled:${k}`))),

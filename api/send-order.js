@@ -214,7 +214,7 @@ export default async function handler(req, res) {
             Name: 'פיצריה מהלב',
           },
           To: [{ Email: process.env.MAILJET_TO_EMAIL }, { Email: process.env.MAILJET_TO_EMAIL_2 }],
-          Subject: `🍕 הזמנה חדשה — ${customer_name} — ${pizza_count} פיצות — ${pickup_time}`,
+          Subject: `🍕 הזמנה חדשה — ${pizza_count} פיצות — ${pickup_time} — ${customer_name}`,
           TextPart: text,
           HTMLPart: html,
         },

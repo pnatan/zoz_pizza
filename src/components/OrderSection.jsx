@@ -64,11 +64,13 @@ export default function OrderSection() {
   const [pickupTime, setPickupTime] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerEmail, setCustomerEmail] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
   const [phoneError, setPhoneError] = useState(null)
+  const [emailError, setEmailError] = useState(null)
   const [slotRemaining, setSlotRemaining] = useState({})
   const [toppingsDisabled, setToppingsDisabled] = useState([])
   const [slots, setSlots] = useState([])
@@ -76,6 +78,10 @@ export default function OrderSection() {
   function validatePhone(value) {
     const digits = value.replace(/[-\s]/g, '')
     return /^05[0-9]{8}$/.test(digits)
+  }
+
+  function validateEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
   }
 
   function loadAvailability() {
@@ -118,6 +124,17 @@ export default function OrderSection() {
       setPhoneError('מספר טלפון לא תקין, יש להזין מספר נייד ישראלי')
       return
     }
+    if (!validateEmail(customerEmail)) {
+      setEmailError('כתובת אימייל לא תקינה')
+      return
+    }
+    const missingSections = pizzas.some(p =>
+      Object.values(p.toppings).some(v => v && v !== 'full' && v.sections.length === 0)
+    )
+    if (missingSections) {
+      setError('יש לבחור לפחות חלק אחד בפיצה עבור כל תוספת')
+      return
+    }
     const missingType = pizzas.some(p => !Object.values(p.sauces).some(Boolean))
     if (missingType) {
       setError('יש לבחור סוג פיצה לכל הזמנה')
@@ -136,6 +153,7 @@ export default function OrderSection() {
         body: JSON.stringify({
           customer_name: customerName,
           customer_phone: customerPhone,
+          customer_email: customerEmail,
           pickup_time: pickupTime,
           order_details: formatPizzas(pizzas),
           total_price: `₪${total}`,
@@ -174,6 +192,7 @@ export default function OrderSection() {
               setPickupTime('')
               setCustomerName('')
               setCustomerPhone('')
+              setCustomerEmail('')
               setPaymentMethod('')
             }}
           >
@@ -202,6 +221,10 @@ export default function OrderSection() {
               index={index}
               canRemove={pizzas.length > 1}
               typeError={!Object.values(pizza.sauces).some(Boolean) && !!error}
+              toppingErrors={error ? Object.keys(pizza.toppings).filter(k => {
+                const v = pizza.toppings[k]
+                return v && v !== 'full' && v.sections.length === 0
+              }) : []}
               disabledToppings={toppingsDisabled}
               onChange={updated => updatePizza(pizza.id, updated)}
               onRemove={() => removePizza(pizza.id)}
@@ -255,6 +278,7 @@ export default function OrderSection() {
           <input
             className={`text-input${phoneError ? ' input-error' : ''}`}
             type="tel"
+            inputMode="numeric"
             placeholder="טלפון נייד"
             value={customerPhone}
             onChange={e => {
@@ -268,6 +292,22 @@ export default function OrderSection() {
             required
           />
           {phoneError && <p className="field-error">{phoneError}</p>}
+          <input
+            className={`text-input${emailError ? ' input-error' : ''}`}
+            type="email"
+            placeholder="אימייל"
+            value={customerEmail}
+            onChange={e => {
+              setCustomerEmail(e.target.value)
+              if (emailError) setEmailError(null)
+            }}
+            onBlur={() => {
+              if (customerEmail && !validateEmail(customerEmail))
+                setEmailError('כתובת אימייל לא תקינה')
+            }}
+            required
+          />
+          {emailError && <p className="field-error">{emailError}</p>}
         </div>
 
         <div className="order-card">

@@ -47,7 +47,7 @@ const SECTOR_PATHS = {
   'quarter-4': 'M 26 26 L 4 26 A 22 22 0 0 1 26 4 Z',
 }
 
-function PizzaDiagram({ portionType, selectedSections, onToggle }) {
+function PizzaDiagram({ portionType, selectedSections, onToggle, hasError }) {
   const keys = portionType === 'half'
     ? ['half-1', 'half-2']
     : portionType === 'third'
@@ -56,24 +56,24 @@ function PizzaDiagram({ portionType, selectedSections, onToggle }) {
 
   return (
     <svg className="pizza-diagram" width="52" height="52" viewBox="0 0 52 52">
-      <circle cx="26" cy="26" r="22" fill="#faf7f4" stroke="var(--border)" strokeWidth="1.5"/>
+      <circle cx="26" cy="26" r="22" fill="#faf7f4" stroke={hasError ? 'var(--accent)' : 'var(--border)'} strokeWidth={hasError ? '2.5' : '1.5'}/>
       {keys.map((k, i) => (
         <path
           key={k}
           d={SECTOR_PATHS[k]}
           fill={selectedSections.includes(i + 1) ? 'var(--accent)' : 'transparent'}
-          stroke="var(--border)"
+          stroke={hasError ? 'var(--accent)' : 'var(--border)'}
           strokeWidth="1.5"
           style={{ cursor: 'pointer' }}
           onClick={() => onToggle(i + 1)}
         />
       ))}
-      <circle cx="26" cy="26" r="3" fill="var(--border)" pointerEvents="none"/>
+      <circle cx="26" cy="26" r="3" fill={hasError ? 'var(--accent)' : 'var(--border)'} pointerEvents="none"/>
     </svg>
   )
 }
 
-export default function PizzaCard({ pizza, index, canRemove, typeError, disabledToppings = [], onChange, onRemove }) {
+export default function PizzaCard({ pizza, index, canRemove, typeError, toppingErrors = [], disabledToppings = [], onChange, onRemove }) {
   const selectedType = Object.entries(pizza.sauces).find(([, v]) => v)
   const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
   const price = selectedType ? PIZZA_PRICES[selectedType[0]] + toppingsPrice : null
@@ -241,6 +241,7 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, disabled
                         portionType={portionType}
                         selectedSections={selectedSections}
                         onToggle={section => handleSectionToggle(key, section)}
+                        hasError={toppingErrors.includes(key)}
                       />
                     </div>
                   )}

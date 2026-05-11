@@ -14,7 +14,7 @@ export default function Hero() {
           </div>
         </div>
         <h1 className="hero-title">פיצריה מהלב</h1>
-        <p className="hero-subtitle">בצק טרי · תנור אבן · כל יום מחדש</p>
+        <p className="hero-subtitle">בצק טרי · כל יום מחדש</p>
         <div className="hero-actions">
           <a href="https://instagram.com" className="social-link" aria-label="Instagram">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

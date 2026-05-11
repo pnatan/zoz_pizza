@@ -157,6 +157,7 @@ export default function AdminPanel({ onClose }) {
       setConfigEnd(data.slotsConfig?.end || '21:00')
       setConfigInterval(data.slotsConfig?.interval || 15)
       setLoggedIn(true)
+      loadOrders()
     } catch {
       setLoginError('שגיאת חיבור')
     } finally {
@@ -226,21 +227,27 @@ export default function AdminPanel({ onClose }) {
     }
   }
 
-  async function deleteOrder(index) {
+  async function deleteOrder(displayIndex) {
+    const order = orders[displayIndex]
+    const redisIndex = order._redisIndex
     const res = await fetch('/api/admin/delete-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password, index }),
+      body: JSON.stringify({ password, index: redisIndex }),
     })
     const data = await res.json()
-    setOrders(prev => prev.filter((_, i) => i !== index))
+    setOrders(prev =>
+      prev
+        .filter((_, i) => i !== displayIndex)
+        .map(o => ({ ...o, _redisIndex: o._redisIndex > redisIndex ? o._redisIndex - 1 : o._redisIndex }))
+    )
     setReadyOrders(prev => {
       const next = new Set(prev)
-      next.delete(orders[index]?.timestamp)
+      next.delete(order.timestamp)
       return next
     })
-    if (expandedOrder === index) setExpandedOrder(null)
-    else if (expandedOrder > index) setExpandedOrder(expandedOrder - 1)
+    if (expandedOrder === displayIndex) setExpandedOrder(null)
+    else if (expandedOrder > displayIndex) setExpandedOrder(expandedOrder - 1)
     if (data.slot) {
       setState(prev => ({
         ...prev,
@@ -265,7 +272,7 @@ export default function AdminPanel({ onClose }) {
   }
 
   async function saveOrderEdit() {
-    const { index, pizzas } = editingOrder
+    const { index, redisIndex, pizzas } = editingOrder
     if (pizzas.length === 0) {
       if (window.confirm('אין פיצות בהזמנה. למחוק את ההזמנה?')) {
         await deleteOrder(index)
@@ -285,10 +292,10 @@ export default function AdminPanel({ onClose }) {
     const res = await fetch('/api/admin/update-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password, index, updatedOrder }),
+      body: JSON.stringify({ password, index: redisIndex, updatedOrder }),
     })
     const data = await res.json()
-    setOrders(prev => prev.map((o, i) => i === index ? updatedOrder : o))
+    setOrders(prev => prev.map((o, i) => i === index ? { ...updatedOrder, _redisIndex: redisIndex } : o))
     if (data.slot) {
       setState(prev => ({ ...prev, slotCounts: { ...prev.slotCounts, [data.slot]: data.newCount } }))
       setCountInputs(prev => ({ ...prev, [data.slot]: data.newCount }))
@@ -336,7 +343,6 @@ export default function AdminPanel({ onClose }) {
         <div className="admin-header">
           <h2 className="admin-title">ניהול</h2>
           <div className="admin-header-actions">
-            <button className="admin-btn-secondary" onClick={logout}>התנתקות</button>
             <button className="admin-close" onClick={onClose}>✕</button>
           </div>
         </div>
@@ -421,7 +427,7 @@ export default function AdminPanel({ onClose }) {
                               <OrderPizzas pizzas={order.pizzas} />
                               <button
                                 className="admin-btn-small admin-edit-btn"
-                                onClick={() => setEditingOrder({ index: i, pizzas: order.pizzas ? [...order.pizzas] : [] })}
+                                onClick={() => setEditingOrder({ index: i, redisIndex: order._redisIndex, pizzas: order.pizzas ? [...order.pizzas] : [] })}
                               >ערוך הזמנה</button>
                             </>
                           )}
@@ -530,6 +536,36 @@ export default function AdminPanel({ onClose }) {
             ))}
           </div>
         </section>
+
+        <div style={{ textAlign: 'center', paddingBottom: 8 }}>
+          <button
+            className="admin-btn-danger"
+            onClick={async () => {
+              if (!window.confirm('האם אתה בטוח שברצונך למחוק את כל ההזמנות של היום?')) return
+              const res = await fetch('/api/admin/clear-orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+              })
+              const data = await res.json()
+              setOrders([])
+              setReadyOrders(new Set())
+              setExpandedOrder(null)
+              if (data.clearedSlots) {
+                setState(prev => ({
+                  ...prev,
+                  slotCounts: Object.fromEntries(data.clearedSlots.map(s => [s, 0])),
+                }))
+                setCountInputs(prev => ({
+                  ...prev,
+                  ...Object.fromEntries(data.clearedSlots.map(s => [s, 0])),
+                }))
+              }
+            }}
+          >
+            מחק את כל ההזמנות
+          </button>
+        </div>
       </div>
     </div>
   )

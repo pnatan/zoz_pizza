@@ -62,9 +62,9 @@ export default function OrderSection() {
   const [pizzas, setPizzas] = useState([createEmptyPizza(1)])
   const [nextId, setNextId] = useState(2)
   const [pickupTime, setPickupTime] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
-  const [customerEmail, setCustomerEmail] = useState('')
+  const [customerName, setCustomerName] = useState(() => localStorage.getItem('cx_name') || '')
+  const [customerPhone, setCustomerPhone] = useState(() => localStorage.getItem('cx_phone') || '')
+  const [customerEmail, setCustomerEmail] = useState(() => localStorage.getItem('cx_email') || '')
   const [paymentMethod, setPaymentMethod] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [sending, setSending] = useState(false)
@@ -168,6 +168,9 @@ export default function OrderSection() {
         throw new Error(message || 'שגיאה בשליחת ההזמנה, נסה שוב')
       }
       setSubmitted(true)
+      localStorage.setItem('cx_name', customerName)
+      localStorage.setItem('cx_phone', customerPhone)
+      localStorage.setItem('cx_email', customerEmail)
       loadAvailability()
     } catch (err) {
       setError(err.message || 'שגיאה בשליחת ההזמנה, נסה שוב')
@@ -190,9 +193,9 @@ export default function OrderSection() {
               setPizzas([createEmptyPizza(1)])
               setNextId(2)
               setPickupTime('')
-              setCustomerName('')
-              setCustomerPhone('')
-              setCustomerEmail('')
+              setCustomerName(localStorage.getItem('cx_name') || '')
+              setCustomerPhone(localStorage.getItem('cx_phone') || '')
+              setCustomerEmail(localStorage.getItem('cx_email') || '')
               setPaymentMethod('')
             }}
           >

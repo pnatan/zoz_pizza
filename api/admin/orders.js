@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const redis = getRedis()
     const raw = await redis.lrange('orders:today', 0, -1)
     const orders = raw
-      .map(s => { try { return JSON.parse(s) } catch { return null } })
+      .map((s, redisIndex) => { try { return { ...JSON.parse(s), _redisIndex: redisIndex } } catch { return null } })
       .filter(Boolean)
       .sort((a, b) => a.pickup_time.localeCompare(b.pickup_time))
 

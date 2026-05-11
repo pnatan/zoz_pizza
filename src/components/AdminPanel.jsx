@@ -187,11 +187,13 @@ export default function AdminPanel({ onClose }) {
     try {
       const res = await fetch(`/api/admin/orders?password=${encodeURIComponent(password)}`)
       const data = await res.json()
+      if (data.error && !data.orders) throw new Error(data.error)
       const list = data.orders || []
       setOrders(list)
       setReadyOrders(new Set(list.filter(o => o.ready).map(o => o.timestamp)))
-    } catch {
+    } catch (err) {
       setOrders([])
+      alert(`שגיאה בטעינת הזמנות: ${err.message}`)
     } finally {
       setOrdersLoading(false)
     }

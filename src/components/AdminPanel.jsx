@@ -15,6 +15,32 @@ const TOPPINGS = [
 
 const TOPPING_LABELS = Object.fromEntries(TOPPINGS.map(t => [t.key, t.label]))
 const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
+const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
+const TOPPING_PRICES = { onion: 4, corn: 4, mushrooms: 4, olives: 4, hot_pepper: 4, pepperoni: 7, corned_beef: 7, tuna: 7, anchovy: 7 }
+const SECTION_NAMES = { half: ['ימין', 'שמאל'], third: ['ימין', 'תחתון', 'שמאל'], quarter: ['ימין עליון', 'ימין תחתון', 'שמאל תחתון', 'שמאל עליון'] }
+
+function getPizzaPrice(pizza) {
+  const type = Object.entries(pizza.sauces).find(([, v]) => v)
+  const base = type ? PIZZA_PRICES[type[0]] : 0
+  const extras = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((s, [k]) => s + (TOPPING_PRICES[k] || 0), 0)
+  return base + extras
+}
+
+function formatPizzas(pizzas) {
+  return pizzas.map((p, i) => {
+    const sauce = Object.entries(p.sauces).find(([, v]) => v)
+    const toppings = Object.entries(p.toppings).filter(([, v]) => v)
+      .map(([k, v]) => {
+        if (v === 'full') return TOPPING_LABELS[k]
+        const names = v.sections.map(s => SECTION_NAMES[v.portion][s - 1])
+        return `${TOPPING_LABELS[k]} (${names.join(' + ')})`
+      }).join(', ') || (sauce?.[0] === 'margarita' ? 'ללא תוספות' : '')
+    const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : 'ללא רוטב'
+    const removals = p.removals?.length ? `\n  ללא: ${p.removals.join(', ')}` : ''
+    const name = p.name ? ` (עבור: ${p.name})` : ''
+    return `פיצה ${i + 1}${name}\n  סוג: ${sauceLabel}\n  תוספות: ${toppings}${removals}\n  מחיר: ₪${getPizzaPrice(p)}`
+  }).join('\n\n')
+}
 
 const SECTOR_PATHS = {
   'half-1':    'M 26 26 L 26 4 A 22 22 0 0 1 26 48 Z',
@@ -113,6 +139,7 @@ export default function AdminPanel({ onClose }) {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [expandedOrder, setExpandedOrder] = useState(null)
   const [readyOrders, setReadyOrders] = useState(new Set())
+  const [editingOrder, setEditingOrder] = useState(null) // { index, pizzas }
 
   async function login(e) {
     e.preventDefault()
@@ -237,6 +264,38 @@ export default function AdminPanel({ onClose }) {
     })
   }
 
+  async function saveOrderEdit() {
+    const { index, pizzas } = editingOrder
+    if (pizzas.length === 0) {
+      if (window.confirm('אין פיצות בהזמנה. למחוק את ההזמנה?')) {
+        await deleteOrder(index)
+        setEditingOrder(null)
+      }
+      return
+    }
+    const order = orders[index]
+    const newTotal = pizzas.reduce((s, p) => s + getPizzaPrice(p), 0)
+    const updatedOrder = {
+      ...order,
+      pizzas,
+      pizza_count: pizzas.length,
+      total_price: `₪${newTotal}`,
+      order_details: formatPizzas(pizzas),
+    }
+    const res = await fetch('/api/admin/update-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, index, updatedOrder }),
+    })
+    const data = await res.json()
+    setOrders(prev => prev.map((o, i) => i === index ? updatedOrder : o))
+    if (data.slot) {
+      setState(prev => ({ ...prev, slotCounts: { ...prev.slotCounts, [data.slot]: data.newCount } }))
+      setCountInputs(prev => ({ ...prev, [data.slot]: data.newCount }))
+    }
+    setEditingOrder(null)
+  }
+
   function logout() {
     localStorage.removeItem('admin_password')
     setLoggedIn(false)
@@ -318,7 +377,54 @@ export default function AdminPanel({ onClose }) {
                       {expandedOrder === i && (
                         <div className="admin-order-details">
                           <div className="admin-order-phone">{order.customer_phone}</div>
-                          <OrderPizzas pizzas={order.pizzas} />
+                          {editingOrder?.index === i ? (
+                            <div className="admin-order-edit">
+                              {editingOrder.pizzas.map((p, pi) => {
+                                const sauce = Object.entries(p.sauces).find(([, v]) => v)
+                                const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : ''
+                                const activeToppings = Object.entries(p.toppings).filter(([, v]) => v)
+                                return (
+                                  <div key={pi} className="admin-edit-pizza">
+                                    <div className="admin-edit-pizza-header">
+                                      <span>פיצה {pi + 1} — <strong>{sauceLabel}</strong></span>
+                                      <button
+                                        className="admin-order-delete"
+                                        onClick={() => setEditingOrder(prev => ({ ...prev, pizzas: prev.pizzas.filter((_, j) => j !== pi) }))}
+                                      >✕ הסר פיצה</button>
+                                    </div>
+                                    {activeToppings.length > 0 && (
+                                      <div className="admin-order-toppings">
+                                        {activeToppings.map(([k, v]) => (
+                                          <div key={k} className="admin-order-topping">
+                                            <ToppingDiagram val={v} />
+                                            <span>{TOPPING_LABELS[k]}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {p.removals?.length > 0 && (
+                                      <div className="admin-order-removals">ללא: {p.removals.join(', ')}</div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                              <div className="admin-edit-total">
+                                סה"כ: ₪{editingOrder.pizzas.reduce((s, p) => s + getPizzaPrice(p), 0)}
+                              </div>
+                              <div className="admin-edit-actions">
+                                <button className="admin-btn-small" onClick={saveOrderEdit}>שמור שינויים</button>
+                                <button className="admin-btn-secondary" onClick={() => setEditingOrder(null)}>ביטול</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <OrderPizzas pizzas={order.pizzas} />
+                              <button
+                                className="admin-btn-small admin-edit-btn"
+                                onClick={() => setEditingOrder({ index: i, pizzas: order.pizzas ? [...order.pizzas] : [] })}
+                              >ערוך הזמנה</button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

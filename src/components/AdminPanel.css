@@ -459,6 +459,50 @@
   color: var(--text-muted);
 }
 
+.admin-order-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-edit-pizza {
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-edit-pizza-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.admin-edit-total {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: right;
+  padding: 4px 0;
+}
+
+.admin-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.admin-edit-btn {
+  margin-top: 8px;
+}
+
 .admin-config-label {
   font-size: 13px;
   font-weight: 600;

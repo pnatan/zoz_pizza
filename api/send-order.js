@@ -355,6 +355,15 @@ export default async function handler(req, res) {
     await redis.incrby(key, incoming)
     await redis.expire(key, ttl)
 
+    const orderRecord = JSON.stringify({
+      customer_name, customer_phone, pickup_time,
+      total_price, pizza_count, payment_method,
+      order_details, pizzas, slot,
+      timestamp: Date.now(),
+    })
+    await redis.rpush('orders:today', orderRecord)
+    await redis.expire('orders:today', ttl)
+
     return res.status(200).json({ ok: true })
   } catch (err) {
     console.error('send-order error:', err)

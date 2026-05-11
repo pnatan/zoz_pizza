@@ -13,6 +13,86 @@ const TOPPINGS = [
   { key: 'anchovy', label: 'אנשובי' },
 ]
 
+const TOPPING_LABELS = Object.fromEntries(TOPPINGS.map(t => [t.key, t.label]))
+const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
+
+const SECTOR_PATHS = {
+  'half-1':    'M 26 26 L 26 4 A 22 22 0 0 1 26 48 Z',
+  'half-2':    'M 26 26 L 26 4 A 22 22 0 0 0 26 48 Z',
+  'third-1':   'M 26 26 L 26 4 A 22 22 0 0 1 45.05 37 Z',
+  'third-2':   'M 26 26 L 45.05 37 A 22 22 0 0 1 6.95 37 Z',
+  'third-3':   'M 26 26 L 6.95 37 A 22 22 0 0 1 26 4 Z',
+  'quarter-1': 'M 26 26 L 26 4 A 22 22 0 0 1 48 26 Z',
+  'quarter-2': 'M 26 26 L 48 26 A 22 22 0 0 1 26 48 Z',
+  'quarter-3': 'M 26 26 L 26 48 A 22 22 0 0 1 4 26 Z',
+  'quarter-4': 'M 26 26 L 4 26 A 22 22 0 0 1 26 4 Z',
+}
+
+function ToppingDiagram({ val }) {
+  if (val === 'full') {
+    return (
+      <svg width="36" height="36" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="22" fill="var(--accent)" stroke="var(--accent)" strokeWidth="1.5"/>
+        <circle cx="26" cy="26" r="3" fill="#fff"/>
+      </svg>
+    )
+  }
+  const { portion, sections } = val
+  const keys = portion === 'half'
+    ? ['half-1', 'half-2']
+    : portion === 'third'
+      ? ['third-1', 'third-2', 'third-3']
+      : ['quarter-1', 'quarter-2', 'quarter-3', 'quarter-4']
+  return (
+    <svg width="36" height="36" viewBox="0 0 52 52">
+      <circle cx="26" cy="26" r="22" fill="#faf7f4" stroke="var(--border)" strokeWidth="1.5"/>
+      {keys.map((k, i) => (
+        <path
+          key={k}
+          d={SECTOR_PATHS[k]}
+          fill={sections.includes(i + 1) ? 'var(--accent)' : 'transparent'}
+          stroke="var(--border)"
+          strokeWidth="1.5"
+        />
+      ))}
+      <circle cx="26" cy="26" r="3" fill="var(--border)"/>
+    </svg>
+  )
+}
+
+function OrderPizzas({ pizzas }) {
+  if (!pizzas?.length) return null
+  return (
+    <div className="admin-order-pizzas">
+      {pizzas.map((p, i) => {
+        const sauce = Object.entries(p.sauces).find(([, v]) => v)
+        const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : ''
+        const activeToppings = Object.entries(p.toppings).filter(([, v]) => v)
+        return (
+          <div key={i} className="admin-order-pizza">
+            <div className="admin-order-pizza-title">
+              פיצה {i + 1} — <span>{sauceLabel}</span>
+            </div>
+            {activeToppings.length > 0 && (
+              <div className="admin-order-toppings">
+                {activeToppings.map(([k, v]) => (
+                  <div key={k} className="admin-order-topping">
+                    <ToppingDiagram val={v} />
+                    <span>{TOPPING_LABELS[k]}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {p.removals?.length > 0 && (
+              <div className="admin-order-removals">ללא: {p.removals.join(', ')}</div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 const TIME_OPTIONS = Array.from({ length: 56 }, (_, i) => {
   const t = 10 * 60 + i * 15
   return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0')
@@ -29,6 +109,10 @@ export default function AdminPanel({ onClose }) {
   const [configEnd, setConfigEnd] = useState('21:00')
   const [configInterval, setConfigInterval] = useState(15)
   const [configSaving, setConfigSaving] = useState(false)
+  const [orders, setOrders] = useState(null)
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [expandedOrder, setExpandedOrder] = useState(null)
+  const [readyOrders, setReadyOrders] = useState(new Set())
 
   async function login(e) {
     e.preventDefault()
@@ -98,6 +182,59 @@ export default function AdminPanel({ onClose }) {
     }
   }
 
+  async function loadOrders() {
+    setOrdersLoading(true)
+    try {
+      const res = await fetch(`/api/admin/orders?password=${encodeURIComponent(password)}`)
+      const data = await res.json()
+      const list = data.orders || []
+      setOrders(list)
+      setReadyOrders(new Set(list.filter(o => o.ready).map(o => o.timestamp)))
+    } catch {
+      setOrders([])
+    } finally {
+      setOrdersLoading(false)
+    }
+  }
+
+  async function deleteOrder(index) {
+    const res = await fetch('/api/admin/delete-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, index }),
+    })
+    const data = await res.json()
+    setOrders(prev => prev.filter((_, i) => i !== index))
+    setReadyOrders(prev => {
+      const next = new Set(prev)
+      next.delete(orders[index]?.timestamp)
+      return next
+    })
+    if (expandedOrder === index) setExpandedOrder(null)
+    else if (expandedOrder > index) setExpandedOrder(expandedOrder - 1)
+    if (data.slot) {
+      setState(prev => ({
+        ...prev,
+        slotCounts: { ...prev.slotCounts, [data.slot]: data.newCount },
+      }))
+      setCountInputs(prev => ({ ...prev, [data.slot]: data.newCount }))
+    }
+  }
+
+  async function toggleReady(order) {
+    const isReady = readyOrders.has(order.timestamp)
+    await fetch('/api/admin/toggle-ready', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, timestamp: order.timestamp, ready: !isReady }),
+    })
+    setReadyOrders(prev => {
+      const next = new Set(prev)
+      isReady ? next.delete(order.timestamp) : next.add(order.timestamp)
+      return next
+    })
+  }
+
   function logout() {
     localStorage.removeItem('admin_password')
     setLoggedIn(false)
@@ -142,6 +279,51 @@ export default function AdminPanel({ onClose }) {
             <button className="admin-close" onClick={onClose}>✕</button>
           </div>
         </div>
+
+        <section className="admin-section">
+          <div className="admin-section-title-row">
+            <h3 className="admin-section-title">הזמנות היום</h3>
+            <button className="admin-btn-small" onClick={loadOrders} disabled={ordersLoading}>
+              {ordersLoading ? '...' : orders === null ? 'טען' : 'רענן'}
+            </button>
+          </div>
+          {orders !== null && (
+            orders.length === 0
+              ? <p className="admin-empty">אין הזמנות עדיין</p>
+              : <div className="admin-orders-list">
+                  {orders.map((order, i) => (
+                    <div key={i} className={`admin-order-row${readyOrders.has(order.timestamp) ? ' admin-order-ready' : ''}`}>
+                      <div
+                        className="admin-order-summary"
+                        onClick={() => setExpandedOrder(expandedOrder === i ? null : i)}
+                      >
+                        <span className="admin-order-time">{order.pickup_time}</span>
+                        <span className="admin-order-name">{order.customer_name}</span>
+                        <span className="admin-order-meta">{order.pizza_count} פיצות · {order.total_price}</span>
+                        <span className="admin-order-payment">{order.payment_method}</span>
+                        <span className="admin-order-chevron">{expandedOrder === i ? '▲' : '▼'}</span>
+                        <button
+                          className={`admin-order-ready-btn${readyOrders.has(order.timestamp) ? ' active' : ''}`}
+                          onClick={e => { e.stopPropagation(); toggleReady(order) }}
+                          title="סמן כמוכן"
+                        >✓</button>
+                        <button
+                          className="admin-order-delete"
+                          onClick={e => { e.stopPropagation(); if (window.confirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) deleteOrder(i) }}
+                          title="מחק הזמנה"
+                        >✕</button>
+                      </div>
+                      {expandedOrder === i && (
+                        <div className="admin-order-details">
+                          <div className="admin-order-phone">{order.customer_phone}</div>
+                          <OrderPizzas pizzas={order.pizzas} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+          )}
+        </section>
 
         <section className="admin-section">
           <h3 className="admin-section-title">שעות פעילות</h3>
@@ -209,7 +391,6 @@ export default function AdminPanel({ onClose }) {
         </section>
 
         <section className="admin-section">
-          <h3 className="admin-section-title">ניהול שעות</h3>
           <div className="admin-slots-table">
             <div className="admin-slots-header">
               <span>שעה</span>

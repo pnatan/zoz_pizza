@@ -5,7 +5,7 @@
   align-items: flex-end;
   justify-content: center;
   padding-bottom: 36px;
-  background-image: url('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&q=80');
+  background-image: url('/hero.jpg');
   background-size: cover;
   background-position: center 40%;
 }

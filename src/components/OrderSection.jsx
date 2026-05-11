@@ -270,7 +270,10 @@ export default function OrderSection() {
           <input
             className="text-input"
             type="text"
+            id="customer-name"
+            name="name"
             placeholder="שם"
+            autoComplete="name"
             value={customerName}
             onChange={e => setCustomerName(e.target.value)}
             required
@@ -278,7 +281,10 @@ export default function OrderSection() {
           <input
             className={`text-input${phoneError ? ' input-error' : ''}`}
             type="tel"
-            inputMode="numeric"
+            id="customer-phone"
+            name="phone"
+            inputMode="tel"
+            autoComplete="tel"
             placeholder="טלפון נייד"
             value={customerPhone}
             onChange={e => {
@@ -295,6 +301,9 @@ export default function OrderSection() {
           <input
             className={`text-input${emailError ? ' input-error' : ''}`}
             type="email"
+            id="customer-email"
+            name="email"
+            autoComplete="email"
             placeholder="אימייל"
             value={customerEmail}
             onChange={e => {

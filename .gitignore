@@ -7,3 +7,5 @@ dist
 .DS_Store
 .claude/
 .env*.local
+check-slots.mjs
+package-lock.json

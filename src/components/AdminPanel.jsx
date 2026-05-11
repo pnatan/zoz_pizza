@@ -364,16 +364,16 @@ export default function AdminPanel({ onClose }) {
                         className="admin-order-summary"
                         onClick={() => setExpandedOrder(expandedOrder === i ? null : i)}
                       >
-                        <span className="admin-order-time">{order.pickup_time}</span>
-                        <span className="admin-order-name">{order.customer_name}</span>
-                        <span className="admin-order-meta">{order.pizza_count} פיצות · {order.total_price}</span>
-                        <span className="admin-order-payment">{order.payment_method}</span>
-                        <span className="admin-order-chevron">{expandedOrder === i ? '▲' : '▼'}</span>
                         <button
                           className={`admin-order-ready-btn${readyOrders.has(order.timestamp) ? ' active' : ''}`}
                           onClick={e => { e.stopPropagation(); toggleReady(order) }}
                           title="סמן כמוכן"
                         >✓</button>
+                        <span className="admin-order-time">{order.pickup_time}</span>
+                        <span className="admin-order-name">{order.customer_name}</span>
+                        <span className="admin-order-meta">{order.pizza_count} פיצות · {order.total_price}</span>
+                        <span className="admin-order-payment">{order.payment_method}</span>
+                        <span className="admin-order-chevron">{expandedOrder === i ? '▲' : '▼'}</span>
                         <button
                           className="admin-order-delete"
                           onClick={e => { e.stopPropagation(); if (window.confirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) deleteOrder(i) }}

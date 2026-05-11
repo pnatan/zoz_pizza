@@ -281,7 +281,7 @@ export default async function handler(req, res) {
     await transporter.sendMail({
       from: `"פיצריה מהלב" <${process.env.SMTP_USER}>`,
       to: [process.env.SMTP_TO_EMAIL, process.env.SMTP_TO_EMAIL_2].filter(Boolean).join(', '),
-      subject: `🍕 הזמנה חדשה — ${pizza_count} פיצות — ${pickup_time} — ${customer_name}`,
+      subject: `🍕 הזמנה חדשה | ${pizza_count} פיצות | ${pickup_time} | ${customer_name}`,
       text,
       html,
     })
@@ -345,8 +345,8 @@ export default async function handler(req, res) {
       await transporter.sendMail({
         from: `"פיצריה מהלב" <${process.env.SMTP_USER}>`,
         to: customer_email,
-        subject: `🍕 אישור הזמנה — פיצריה מהלב — ${pickup_time}`,
-        text: `שלום ${customer_name},\n\nההזמנה שלך התקבלה בהצלחה!\n\nשעת איסוף: ${pickup_time}\n\n${order_details}\n\nסה"כ לתשלום: ${total_price}\n\nנתראה! — פיצריה מהלב`,
+        subject: `🍕 אישור הזמנה | פיצריה מהלב | ${pickup_time}`,
+        text: `שלום ${customer_name},\n\nההזמנה שלך התקבלה בהצלחה!\n\nשעת איסוף: ${pickup_time}\n\n${order_details}\n\nסה"כ לתשלום: ${total_price}\n\nנתראה! פיצריה מהלב`,
         html: confirmHtml,
       })
     }

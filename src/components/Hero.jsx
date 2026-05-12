@@ -5,15 +5,7 @@ export default function Hero() {
     <section className="hero">
       <div className="hero-overlay" />
       <div className="hero-content">
-        <div className="hero-logo">
-          <div className="logo-circle">
-            <div className="logo-inner">
-              <span className="logo-top-text">PIZZA MEHALEV</span>
-              <div className="logo-pizza-icon">🍕</div>
-            </div>
-          </div>
-        </div>
-        <h1 className="hero-title">פיצריה מהלב</h1>
+        <h1 className="hero-title">פרנסוס - פיצה על גלגלים</h1>
         <p className="hero-subtitle">בצק טרי · כל יום מחדש</p>
         <div className="hero-actions">
           <a href="https://instagram.com" className="social-link" aria-label="Instagram">
@@ -28,11 +20,11 @@ export default function Hero() {
               <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
             </svg>
           </a>
-          <a href="tel:050-5934465" className="phone-link">
+          <a href="tel:050-8424646" className="phone-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
-            זהר 050-5934465
+            050-8424646
           </a>
         </div>
       </div>

@@ -301,13 +301,18 @@
 
 .admin-orders-summary {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 16px;
+  gap: 6px 12px;
   padding: 8px 4px 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   direction: rtl;
+}
+
+.admin-orders-summary span {
+  white-space: nowrap;
 }
 
 .admin-order-row {

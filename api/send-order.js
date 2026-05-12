@@ -90,22 +90,25 @@ function buildOrderHtml(pizzas) {
         const label = TOPPING_LABELS[k]
         if (v === 'full') {
           const fullCircle = `<span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#d44010;border:2px solid #d44010;vertical-align:middle"></span>`
-          return `<span style="display:inline-block;background:#fff0ed;border:1px solid #ffd8c8;border-radius:20px;padding:4px 12px;font-size:12px;color:#1c1917;white-space:nowrap">${label}&nbsp;&nbsp;${fullCircle}</span>`
+          return `<span style="display:inline-block;background:#fff0ed;border:1px solid #ffd8c8;border-radius:20px;padding:4px 12px;font-size:14px;color:#1c1917;white-space:nowrap">${label}&nbsp;&nbsp;${fullCircle}</span>`
         }
         const img = portionVisual(v.portion, v.sections)
-        return `<span style="display:inline-block;background:#fff0ed;border:1px solid #ffd8c8;border-radius:20px;padding:4px 12px;font-size:12px;color:#1c1917;white-space:nowrap">${label}&nbsp;&nbsp;${img}</span>`
+        return `<span style="display:inline-block;background:#fff0ed;border:1px solid #ffd8c8;border-radius:20px;padding:4px 12px;font-size:14px;color:#1c1917;white-space:nowrap">${label}&nbsp;&nbsp;${img}</span>`
       })
     const toppingsHtml = toppingLines.length
       ? `<div style="direction:rtl;line-height:2.2">${toppingLines.join(' ')}</div>`
-      : sauce?.[0] === 'margarita' ? '<span style="font-size:12px;color:#a8a29e">ללא תוספות</span>' : ''
+      : sauce?.[0] === 'margarita' ? '<span style="font-size:14px;color:#a8a29e">ללא תוספות</span>' : ''
     const removalsHtml = p.removals && p.removals.length
-      ? `<div style="margin-top:8px;font-size:12px;color:#1c1917">ללא: ${p.removals.join(', ')}</div>`
+      ? `<div style="margin-top:8px;font-size:14px;color:#1c1917">ללא: ${p.removals.join(', ')}</div>`
+      : ''
+    const notesHtml = p.notes
+      ? `<div style="margin-top:8px;font-size:14px;color:#1c1917;font-style:italic">הערות: ${p.notes}</div>`
       : ''
     const isLast = i === pizzas.length - 1
     return `<div style="padding:14px 16px;background:#faf7f4;border-radius:10px;margin-bottom:${isLast ? '0' : '8px'}">
       <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px">
         <tr>
-          <td style="text-align:right;font-size:13px;font-weight:700;color:#1c1917">פיצה ${i + 1}</td>
+          <td style="text-align:right;font-size:15px;font-weight:700;color:#1c1917">פיצה ${i + 1}</td>
           <td style="text-align:left">
             <span style="display:inline-block;font-size:12px;font-weight:600;color:#ffffff;background:#d44010;border-radius:20px;padding:2px 12px">${sauceLabel}</span>
           </td>
@@ -113,6 +116,7 @@ function buildOrderHtml(pizzas) {
       </table>
       ${toppingsHtml}
       ${removalsHtml}
+      ${notesHtml}
     </div>`
   }).join('')
 }
@@ -175,7 +179,7 @@ export default async function handler(req, res) {
     })
 
     const text = [
-      `הזמנה חדשה מפיצריה מהלב`,
+      `הזמנה חדשה מפרנסוס - פיצה על גלגלים`,
       ``,
       `לקוח: ${customer_name}`,
       `טלפון: ${customer_phone}`,
@@ -209,7 +213,7 @@ export default async function handler(req, res) {
         <tr>
           <td style="background:#d44010;padding:24px 28px;text-align:right">
             <div style="font-size:13px;color:#ffd8c8;font-weight:600;letter-spacing:1px;margin-bottom:4px">הזמנה חדשה</div>
-            <div style="font-size:22px;font-weight:700;color:#ffffff">🍕 פיצריה מהלב</div>
+            <div style="font-size:22px;font-weight:700;color:#ffffff">🍕 פרנסוס - פיצה על גלגלים</div>
           </td>
         </tr>
 
@@ -222,21 +226,21 @@ export default async function handler(req, res) {
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f4;border-radius:10px;overflow:hidden">
                     <tr>
                       <td style="padding:10px 16px;border-bottom:1px solid #ede8e2">
-                        <span style="font-size:11px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">לקוח</span>
+                        <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">לקוח</span>
                         <span style="font-size:16px;font-weight:700;color:#1c1917">${customer_name}</span>
                       </td>
                       <td style="padding:10px 16px;border-bottom:1px solid #ede8e2;border-right:1px solid #ede8e2;direction:ltr;text-align:left">
-                        <span style="font-size:11px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px;text-align:right;direction:rtl">טלפון</span>
+                        <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px;text-align:right;direction:rtl">טלפון</span>
                         <span style="font-size:15px;color:#1c1917;direction:ltr;display:block">${customer_phone}</span>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:10px 16px">
-                        <span style="font-size:11px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">שעת איסוף</span>
+                        <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">שעת איסוף</span>
                         <span style="font-size:16px;font-weight:700;color:#d44010;direction:ltr;display:inline-block">${pickup_time}</span>
                       </td>
                       <td style="padding:10px 16px;border-right:1px solid #ede8e2">
-                        <span style="font-size:11px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">תשלום</span>
+                        <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">תשלום</span>
                         <span style="font-size:15px;color:#1c1917">${payment_method}</span>
                       </td>
                     </tr>
@@ -279,7 +283,7 @@ export default async function handler(req, res) {
 </html>`
 
     await transporter.sendMail({
-      from: `"פיצריה מהלב" <${process.env.SMTP_USER}>`,
+      from: `"פרנסוס - פיצה על גלגלים" <${process.env.SMTP_USER}>`,
       to: [process.env.SMTP_TO_EMAIL, process.env.SMTP_TO_EMAIL_2].filter(Boolean).join(', '),
       subject: `🍕 הזמנה חדשה | ${pizza_count} פיצות | ${pickup_time} | ${customer_name}`,
       text,
@@ -302,7 +306,7 @@ export default async function handler(req, res) {
         <tr>
           <td style="background:#d44010;padding:24px 28px;text-align:right">
             <div style="font-size:13px;color:#ffd8c8;font-weight:600;letter-spacing:1px;margin-bottom:4px">אישור הזמנה</div>
-            <div style="font-size:22px;font-weight:700;color:#ffffff">🍕 פיצריה מהלב</div>
+            <div style="font-size:22px;font-weight:700;color:#ffffff">🍕 פרנסוס - פיצה על גלגלים</div>
           </td>
         </tr>
 
@@ -343,10 +347,10 @@ export default async function handler(req, res) {
 </html>`
 
       await transporter.sendMail({
-        from: `"פיצריה מהלב" <${process.env.SMTP_USER}>`,
+        from: `"פרנסוס - פיצה על גלגלים" <${process.env.SMTP_USER}>`,
         to: customer_email,
-        subject: `🍕 אישור הזמנה | פיצריה מהלב | ${pickup_time}`,
-        text: `שלום ${customer_name},\n\nההזמנה שלך התקבלה בהצלחה!\n\nשעת איסוף: ${pickup_time}\n\n${order_details}\n\nסה"כ לתשלום: ${total_price}\n\nנתראה! פיצריה מהלב`,
+        subject: `🍕 אישור הזמנה | פרנסוס - פיצה על גלגלים | ${pickup_time}`,
+        text: `שלום ${customer_name},\n\nההזמנה שלך התקבלה בהצלחה!\n\nשעת איסוף: ${pickup_time}\n\n${order_details}\n\nסה"כ לתשלום: ${total_price}\n\nנתראה! פרנסוס - פיצה על גלגלים`,
         html: confirmHtml,
       })
     }

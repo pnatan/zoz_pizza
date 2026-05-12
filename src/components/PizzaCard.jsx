@@ -24,14 +24,6 @@ const TYPES = [
   { key: 'white', label: 'לבנה' },
 ]
 
-const TYPE_INGREDIENTS = {
-  margarita: [],
-  meat: ['רוטב פיצה', 'קונפי שום', 'פפרוני', 'קורנביף', 'פרמז׳ן', 'עלי רוקט', 'איולי הבית'],
-  pesto: ['פסטו הבית', 'קונפי שום', 'שרי צלוי', 'שמנת מתוקה', 'מוצרלה', 'זילוף בלסמי', 'פרמז׳ן', 'עלי רוקט'],
-  white: ['תערובת גבינות', 'מוצרלה', 'פטריות', 'שום קונפי', 'זילוף בלסמי', 'עלי רוקט'],
-}
-
-
 const PORTION_LABELS = { full: 'הכל', half: 'חצי', third: 'שליש', quarter: 'רבע' }
 // half-1 = right, half-2 = left
 // third-1 = upper-right, third-2 = bottom, third-3 = upper-left
@@ -77,8 +69,8 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
   const selectedType = Object.entries(pizza.sauces).find(([, v]) => v)
   const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
   const price = selectedType ? PIZZA_PRICES[selectedType[0]] + toppingsPrice : null
-  const ingredients = selectedType ? TYPE_INGREDIENTS[selectedType[0]] : []
   const [toppingsOpen, setToppingsOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
 
   useEffect(() => {
     const opening = selectedType?.[0] === 'margarita'
@@ -110,7 +102,7 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
 
   function handleTypeChange(key) {
     const newSauces = Object.fromEntries(TYPES.map(t => [t.key, t.key === key]))
-    onChange({ sauces: newSauces, removals: [] })
+    onChange({ sauces: newSauces })
   }
 
   function handleRemovalToggle(ingredient) {
@@ -161,34 +153,6 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
           ))}
         </div>
       </div>
-
-      {ingredients.length > 0 && (
-        <div className="pizza-group">
-          <span className="group-label">התאם את המנה</span>
-          <div className="checkboxes-grid">
-            {ingredients.map(ing => {
-              const removed = (pizza.removals || []).includes(ing)
-              return (
-                <label key={ing} className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={!removed}
-                    onChange={() => handleRemovalToggle(ing)}
-                  />
-                  <span className="custom-checkbox">
-                    {!removed && (
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </span>
-                  <span className="checkbox-text">{ing}</span>
-                </label>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="pizza-group">
         <button type="button" className="group-label group-label-toggle" onClick={() => setToppingsOpen(o => { if (!o) onToppingsOpen?.(); return !o })}>
@@ -252,6 +216,24 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
               </React.Fragment>)
             })}
           </div>
+        )}
+      </div>
+
+      <div className="pizza-group">
+        <button type="button" className="group-label group-label-toggle" onClick={() => setNotesOpen(o => !o)}>
+          <span>הערות{pizza.notes ? ' ✎' : ''}</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: notesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {notesOpen && (
+          <textarea
+            className="pizza-notes-input"
+            placeholder="הערות חופשיות לפיצה..."
+            value={pizza.notes || ''}
+            onChange={e => onChange({ notes: e.target.value })}
+            rows={2}
+          />
         )}
       </div>
     </div>

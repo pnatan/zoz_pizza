@@ -43,8 +43,9 @@ function formatPizzas(pizzas) {
     const sauceLabel = sauce ? SAUCE_LABELS[sauce[0]] : 'ללא רוטב'
     const price = getPizzaPrice(p)
     const removals = p.removals && p.removals.length > 0 ? `\n  ללא: ${p.removals.join(', ')}` : ''
+    const notes = p.notes ? `\n  הערות: ${p.notes}` : ''
     const name = p.name ? ` (עבור: ${p.name})` : ''
-    return `פיצה ${i + 1}${name}\n  סוג: ${sauceLabel}\n  תוספות: ${toppings}${removals}\n  מחיר: ₪${price}`
+    return `פיצה ${i + 1}${name}\n  סוג: ${sauceLabel}\n  תוספות: ${toppings}${removals}${notes}\n  מחיר: ₪${price}`
   }).join('\n\n')
 }
 
@@ -54,6 +55,7 @@ function createEmptyPizza(id) {
     name: '',
     toppings: { onion: null, corn: null, mushrooms: null, olives: null, hot_pepper: null, pepperoni: null, corned_beef: null, tuna: null, anchovy: null },
     sauces: { margarita: false, meat: false, pesto: false, white: false },
+    notes: '',
     removals: [],
   }
 }

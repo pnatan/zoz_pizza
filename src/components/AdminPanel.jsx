@@ -112,6 +112,9 @@ function OrderPizzas({ pizzas }) {
             {p.removals?.length > 0 && (
               <div className="admin-order-removals">ללא: {p.removals.join(', ')}</div>
             )}
+            {p.notes && (
+              <div className="admin-order-removals" style={{ fontStyle: 'italic' }}>הערות: {p.notes}</div>
+            )}
           </div>
         )
       })}

@@ -146,6 +146,29 @@ export default function OrderSection() {
     }
     setSending(true)
     setError(null)
+    let currentDisabled = toppingsDisabled
+    try {
+      const freshData = await fetch('/api/get-availability').then(r => r.json())
+      currentDisabled = freshData.toppingsDisabled || []
+      setToppingsDisabled(currentDisabled)
+      setSlotRemaining(freshData.slotRemaining || {})
+      setSlots(freshData.slots || [])
+    } catch {}
+    const unavailable = [...new Set(
+      pizzas.flatMap(p => Object.keys(p.toppings).filter(k => p.toppings[k] && currentDisabled.includes(k)))
+    )]
+    if (unavailable.length > 0) {
+      const names = unavailable.map(k => TOPPING_LABELS[k]).join(', ')
+      setPizzas(prev => prev.map(p => ({
+        ...p,
+        toppings: Object.fromEntries(
+          Object.entries(p.toppings).map(([k, v]) => [k, unavailable.includes(k) ? null : v])
+        ),
+      })))
+      setError(`התוספות הבאות הוסרו כי אינן זמינות כרגע: ${names}`)
+      setSending(false)
+      return
+    }
     try {
       const res = await fetch('/api/send-order', {
         method: 'POST',
@@ -231,6 +254,7 @@ export default function OrderSection() {
               disabledToppings={toppingsDisabled}
               onChange={updated => updatePizza(pizza.id, updated)}
               onRemove={() => removePizza(pizza.id)}
+              onToppingsOpen={loadAvailability}
             />
           ))}
         </div>

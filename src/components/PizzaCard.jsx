@@ -73,7 +73,7 @@ function PizzaDiagram({ portionType, selectedSections, onToggle, hasError }) {
   )
 }
 
-export default function PizzaCard({ pizza, index, canRemove, typeError, toppingErrors = [], disabledToppings = [], onChange, onRemove }) {
+export default function PizzaCard({ pizza, index, canRemove, typeError, toppingErrors = [], disabledToppings = [], onChange, onRemove, onToppingsOpen }) {
   const selectedType = Object.entries(pizza.sauces).find(([, v]) => v)
   const toppingsPrice = Object.entries(pizza.toppings).filter(([, v]) => v).reduce((sum, [k]) => sum + (TOPPING_PRICES[k] || 0), 0)
   const price = selectedType ? PIZZA_PRICES[selectedType[0]] + toppingsPrice : null
@@ -81,7 +81,9 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
   const [toppingsOpen, setToppingsOpen] = useState(false)
 
   useEffect(() => {
-    setToppingsOpen(selectedType?.[0] === 'margarita')
+    const opening = selectedType?.[0] === 'margarita'
+    setToppingsOpen(opening)
+    if (opening) onToppingsOpen?.()
   }, [selectedType?.[0]])
 
   function handleToppingChange(key) {
@@ -189,7 +191,7 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
       )}
 
       <div className="pizza-group">
-        <button type="button" className="group-label group-label-toggle" onClick={() => setToppingsOpen(o => !o)}>
+        <button type="button" className="group-label group-label-toggle" onClick={() => setToppingsOpen(o => { if (!o) onToppingsOpen?.(); return !o })}>
           <span>תוספות</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: toppingsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

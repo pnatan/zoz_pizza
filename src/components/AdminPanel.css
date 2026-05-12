@@ -306,9 +306,10 @@
 }
 
 .admin-order-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px 48px 1fr 120px 62px 16px 22px;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   padding: 8px 12px;
   cursor: pointer;
   background: var(--bg-input);
@@ -328,7 +329,9 @@
 .admin-order-name {
   font-weight: 600;
   color: var(--text-primary);
-  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-order-meta {

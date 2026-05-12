@@ -110,7 +110,7 @@ function buildOrderHtml(pizzas) {
         <tr>
           <td style="text-align:right;font-size:15px;font-weight:700;color:#1c1917">פיצה ${i + 1}</td>
           <td style="text-align:left">
-            <span style="display:inline-block;font-size:12px;font-weight:600;color:#ffffff;background:#d44010;border-radius:20px;padding:2px 12px">${sauceLabel}</span>
+            <span style="display:inline-block;font-size:18px;font-weight:600;color:#ffffff;background:#d44010;border-radius:20px;padding:4px 16px">${sauceLabel}</span>
           </td>
         </tr>
       </table>
@@ -229,15 +229,15 @@ export default async function handler(req, res) {
                         <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">לקוח</span>
                         <span style="font-size:16px;font-weight:700;color:#1c1917">${customer_name}</span>
                       </td>
-                      <td style="padding:10px 16px;border-bottom:1px solid #ede8e2;border-right:1px solid #ede8e2;direction:ltr;text-align:left">
-                        <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px;text-align:right;direction:rtl">טלפון</span>
-                        <span style="font-size:15px;color:#1c1917;direction:ltr;display:block">${customer_phone}</span>
+                      <td style="padding:10px 16px;border-bottom:1px solid #ede8e2;border-right:1px solid #ede8e2">
+                        <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">טלפון</span>
+                        <span style="font-size:15px;color:#1c1917;display:block">${customer_phone}</span>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:10px 16px">
                         <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">שעת איסוף</span>
-                        <span style="font-size:16px;font-weight:700;color:#d44010;direction:ltr;display:inline-block">${pickup_time}</span>
+                        <span style="font-size:16px;font-weight:700;color:#1c1917;direction:ltr;display:inline-block">${pickup_time}</span>
                       </td>
                       <td style="padding:10px 16px;border-right:1px solid #ede8e2">
                         <span style="font-size:13px;color:#a8a29e;font-weight:700;letter-spacing:0.5px;display:block;margin-bottom:2px">תשלום</span>

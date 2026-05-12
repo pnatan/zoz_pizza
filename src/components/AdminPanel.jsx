@@ -479,9 +479,9 @@ export default function AdminPanel({ onClose }) {
                 <span>|</span>
                 <span><strong>{orders.length}</strong> הזמנות</span>
                 <span>|</span>
-                <span><strong>{readyPizzas}</strong> מוכנות</span>
+                <span><strong>{readyPizzas}</strong> פיצות מוכנות</span>
                 <span>|</span>
-                <span><strong>{unreadyPizzas}</strong> ממתינות</span>
+                <span><strong>{unreadyPizzas}</strong> פיצות ממתינות</span>
               </div>
             )
           })()}

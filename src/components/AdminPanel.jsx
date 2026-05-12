@@ -383,6 +383,7 @@ export default function AdminPanel({ onClose }) {
                       {expandedOrder === i && (
                         <div className="admin-order-details">
                           <div className="admin-order-phone">{order.customer_phone}</div>
+                          <div className="admin-order-payment admin-order-payment-detail">{order.payment_method}</div>
                           {editingOrder?.index === i ? (
                             <div className="admin-order-edit">
                               {editingOrder.pizzas.map((p, pi) => {
@@ -436,6 +437,12 @@ export default function AdminPanel({ onClose }) {
                     </div>
                   ))}
                 </div>
+          )}
+          {orders !== null && orders.length > 0 && (
+            <div className="admin-orders-summary">
+              <span>{orders.length} הזמנות</span>
+              <span>{orders.reduce((s, o) => s + (parseInt(o.pizza_count) || 0), 0)} פיצות</span>
+            </div>
           )}
         </section>
 

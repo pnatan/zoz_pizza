@@ -152,6 +152,12 @@ export default function AdminPanel({ onClose }) {
     return () => clearInterval(id)
   }, [])
 
+  useEffect(() => {
+    if (!loggedIn) return
+    const id = setInterval(() => loadOrders(), 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [loggedIn])
+
   const [currentTime, setCurrentTime] = useState('')
 
   function isCurrentSlot(pickupTime) {
@@ -479,7 +485,6 @@ export default function AdminPanel({ onClose }) {
               </div>
             )
           })()}
-          )}
         </section>
 
         <section className="admin-section">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import './AdminPanel.css'
 
 const TOPPINGS = [
@@ -140,6 +140,29 @@ export default function AdminPanel({ onClose }) {
   const [expandedOrder, setExpandedOrder] = useState(null)
   const [readyOrders, setReadyOrders] = useState(new Set())
   const [editingOrder, setEditingOrder] = useState(null) // { index, pizzas }
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date()
+      const t = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setCurrentTime(prev => prev === t ? prev : t)
+    }
+    tick()
+    const id = setInterval(tick, 10000)
+    return () => clearInterval(id)
+  }, [])
+
+  const [currentTime, setCurrentTime] = useState('')
+
+  function isCurrentSlot(pickupTime) {
+    if (!currentTime) return false
+    const interval = configInterval || 15
+    const [ph, pm] = pickupTime.split(':').map(Number)
+    const [ch, cm] = currentTime.split(':').map(Number)
+    const pickupMins = ph * 60 + pm
+    const nowMins = ch * 60 + cm
+    return nowMins >= pickupMins - interval && nowMins <= pickupMins
+  }
 
   async function login(e) {
     e.preventDefault()
@@ -359,7 +382,7 @@ export default function AdminPanel({ onClose }) {
               ? <p className="admin-empty">אין הזמנות עדיין</p>
               : <div className="admin-orders-list">
                   {orders.map((order, i) => (
-                    <div key={i} className={`admin-order-row${readyOrders.has(order.timestamp) ? ' admin-order-ready' : ''}`}>
+                    <div key={i} className={`admin-order-row${readyOrders.has(order.timestamp) ? ' admin-order-ready' : ''}${!readyOrders.has(order.timestamp) && isCurrentSlot(order.pickup_time) ? ' admin-order-current' : ''}`}>
                       <div
                         className="admin-order-summary"
                         onClick={() => setExpandedOrder(expandedOrder === i ? null : i)}
@@ -438,11 +461,24 @@ export default function AdminPanel({ onClose }) {
                   ))}
                 </div>
           )}
-          {orders !== null && orders.length > 0 && (
-            <div className="admin-orders-summary">
-              <span>{orders.length} הזמנות</span>
-              <span>{orders.reduce((s, o) => s + (parseInt(o.pizza_count) || 0), 0)} פיצות</span>
-            </div>
+          {orders !== null && orders.length > 0 && (() => {
+            const totalPizzas = orders.reduce((s, o) => s + (parseInt(o.pizza_count) || 0), 0)
+            const readyPizzas = orders.filter(o => readyOrders.has(o.timestamp)).reduce((s, o) => s + (parseInt(o.pizza_count) || 0), 0)
+            const unreadyPizzas = totalPizzas - readyPizzas
+            const readyCount = orders.filter(o => readyOrders.has(o.timestamp)).length
+            const unreadyCount = orders.length - readyCount
+            return (
+              <div className="admin-orders-summary">
+                <span><strong>{totalPizzas}</strong> פיצות</span>
+                <span>|</span>
+                <span><strong>{orders.length}</strong> הזמנות</span>
+                <span>|</span>
+                <span><strong>{readyPizzas}</strong> מוכנות</span>
+                <span>|</span>
+                <span><strong>{unreadyPizzas}</strong> ממתינות</span>
+              </div>
+            )
+          })()}
           )}
         </section>
 

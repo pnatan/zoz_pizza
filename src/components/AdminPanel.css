@@ -414,6 +414,22 @@
   background: #f0fdf4;
 }
 
+.admin-order-current .admin-order-summary {
+  background: #fefce8;
+}
+
+.admin-order-current .admin-order-summary:hover {
+  background: #fef9c3;
+}
+
+.admin-order-current .admin-order-details {
+  background: #fefce8;
+}
+
+.admin-order-current .admin-order-time {
+  color: #b45309;
+}
+
 .admin-order-details {
   padding: 10px 12px;
   background: var(--bg-card);

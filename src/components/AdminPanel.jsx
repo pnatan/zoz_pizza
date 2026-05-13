@@ -14,8 +14,8 @@ const TOPPINGS = [
 ]
 
 const TOPPING_LABELS = Object.fromEntries(TOPPINGS.map(t => [t.key, t.label]))
-const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
-const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
+const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה', green_white: 'לבנה ירוקה' }
+const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53, green_white: 53 }
 const TOPPING_PRICES = { onion: 4, corn: 4, mushrooms: 4, olives: 4, hot_pepper: 4, pepperoni: 7, corned_beef: 7, tuna: 7, anchovy: 7 }
 const SECTION_NAMES = { half: ['ימין', 'שמאל'], third: ['ימין', 'תחתון', 'שמאל'], quarter: ['ימין עליון', 'ימין תחתון', 'שמאל תחתון', 'שמאל עליון'] }
 

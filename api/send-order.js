@@ -46,7 +46,7 @@ const TOPPING_LABELS = {
   onion: 'בצל', corn: 'תירס', mushrooms: 'פטריות', olives: 'זיתים', hot_pepper: 'פלפל חריף',
   pepperoni: 'פפרוני', corned_beef: 'קורנביף', tuna: 'טונה', anchovy: 'אנשובי',
 }
-const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
+const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה', green_white: 'לבנה ירוקה' }
 
 function portionVisual(portion, sections) {
   const sel = n => sections.includes(n)

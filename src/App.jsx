@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import Hero from './components/Hero'
 import Menu from './components/Menu'
-import Gallery from './components/Gallery'
 import OrderSection from './components/OrderSection'
 import Footer from './components/Footer'
 import AdminPanel from './components/AdminPanel'
@@ -28,7 +27,6 @@ export default function App() {
       <div className="panel-info">
         <Hero />
         <Menu />
-        <Gallery />
       </div>
       <div className="panel-order">
         <OrderSection />

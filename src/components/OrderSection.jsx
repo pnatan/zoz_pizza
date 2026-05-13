@@ -6,7 +6,7 @@ const TOPPING_LABELS = {
   onion: 'בצל', corn: 'תירס', mushrooms: 'פטריות', olives: 'זיתים', hot_pepper: 'פלפל חריף',
   pepperoni: 'פפרוני', corned_beef: 'קורנביף', tuna: 'טונה', anchovy: 'אנשובי',
 }
-const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה' }
+const SAUCE_LABELS = { margarita: 'מרגריטה', meat: 'אוהבי בשר', pesto: 'פסטו', white: 'לבנה', green_white: 'לבנה ירוקה' }
 
 const SECTION_NAMES = {
   half: ['ימין', 'שמאל'],
@@ -14,7 +14,7 @@ const SECTION_NAMES = {
   quarter: ['ימין עליון', 'ימין תחתון', 'שמאל תחתון', 'שמאל עליון'],
 }
 
-const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
+const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53, green_white: 53 }
 const TOPPING_PRICES = {
   onion: 4, corn: 4, mushrooms: 4, olives: 4, hot_pepper: 4,
   pepperoni: 7, corned_beef: 7, tuna: 7, anchovy: 7,
@@ -54,7 +54,7 @@ function createEmptyPizza(id) {
     id,
     name: '',
     toppings: { onion: null, corn: null, mushrooms: null, olives: null, hot_pepper: null, pepperoni: null, corned_beef: null, tuna: null, anchovy: null },
-    sauces: { margarita: false, meat: false, pesto: false, white: false },
+    sauces: { margarita: false, meat: false, pesto: false, white: false, green_white: false },
     notes: '',
     removals: [],
   }
@@ -282,7 +282,13 @@ export default function OrderSection() {
           >
             <option value="" disabled>בחר שעה</option>
             {slots
-              .filter(t => (slotRemaining[t] ?? MAX_PIZZAS) >= pizzas.length)
+              .filter(t => {
+                if ((slotRemaining[t] ?? MAX_PIZZAS) < pizzas.length) return false
+                const now = new Date()
+                const nowMins = now.getHours() * 60 + now.getMinutes()
+                const [h, m] = t.split(':').map(Number)
+                return h * 60 + m >= nowMins
+              })
               .map(t => {
                 const remaining = slotRemaining[t] ?? MAX_PIZZAS
                 return (

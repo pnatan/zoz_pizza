@@ -15,13 +15,14 @@ const TOPPINGS = [
 
 const TOPPING_PRICES = Object.fromEntries(TOPPINGS.map(t => [t.key, t.price]))
 
-const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53 }
+const PIZZA_PRICES = { margarita: 39, meat: 57, pesto: 53, white: 53, green_white: 53 }
 
 const TYPES = [
   { key: 'margarita', label: 'מרגריטה' },
   { key: 'meat', label: 'אוהבי בשר' },
   { key: 'pesto', label: 'פסטו' },
   { key: 'white', label: 'לבנה' },
+  { key: 'green_white', label: 'לבנה ירוקה' },
 ]
 
 const PORTION_LABELS = { full: 'הכל', half: 'חצי', third: 'שליש', quarter: 'רבע' }
@@ -132,7 +133,7 @@ export default function PizzaCard({ pizza, index, canRemove, typeError, toppingE
 
       <div className="pizza-group">
         <span className="group-label" style={typeError ? { color: 'var(--accent)' } : {}}>סוג{typeError ? ' — יש לבחור סוג' : ''}</span>
-        <div className="checkboxes-grid">
+        <div className="checkboxes-grid checkboxes-grid-3">
           {TYPES.map(({ key, label }) => (
             <label key={key} className="checkbox-label">
               <input

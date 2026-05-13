@@ -119,6 +119,10 @@
   direction: rtl;
 }
 
+.checkboxes-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
 .toppings-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
